@@ -1,0 +1,38 @@
+# Datos sensibles - NUNCA subir al repo
+*.xlsx
+*.xls
+*.csv
+data/
+uploads/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# PyInstaller
+*.spec
+dist/
+build/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log
+
+# Vercel
+.vercel/
+
+# Variables de entorno locales
+.env
+.env.local
+.env.*.local
