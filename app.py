@@ -18,9 +18,12 @@ import barcode_utils as bu
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["JSON_SORT_KEYS"] = False
 
+_local_excel = os.path.join(os.path.dirname(__file__), "tiendas.xlsx")
+_desktop_excel = r"C:\Users\victus\OneDrive\Desktop\MSM W45 (11.11 - 17.11) TIENDAS.xlsx"
+
 EXCEL_PATH_DEFAULT = os.environ.get(
     "EXCEL_PATH",
-    r"C:\Users\victus\OneDrive\Desktop\MSM W45 (11.11 - 17.11) TIENDAS.xlsx"
+    _local_excel if os.path.exists(_local_excel) else _desktop_excel
 )
 CSV_PATH_DEFAULT = os.environ.get(
     "CSV_PATH",
