@@ -205,14 +205,9 @@ def ping():
 # ──────────────────────────────────────────────
 # Arranque local
 # ──────────────────────────────────────────────
-def open_browser():
-    import time; time.sleep(1.2)
-    webbrowser.open("http://127.0.0.1:5000")
-
 if __name__ == "__main__":
-    t = threading.Thread(target=open_browser, daemon=True)
-    t.start()
+    port = int(os.environ.get("PORT", 5050))
     print("=" * 50)
-    print("  RetailPOS Pro v2 — http://127.0.0.1:5000")
+    print(f"  RetailPOS Pro v2 — http://127.0.0.1:{port}")
     print("=" * 50)
-    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+    app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)

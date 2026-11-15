@@ -1,30 +1,20 @@
 @echo off
-title RetailPOS Pro
-color 0A
+title RetailPOS Pro v2
+color 0B
 echo.
-echo  =========================================
-echo   RetailPOS Pro - Iniciando...
-echo  =========================================
+echo  ======================================================
+echo     RetailPOS Pro v2 - Iniciando PWA Mobile/Desktop
+echo  ======================================================
 echo.
 
-REM Verificar Python
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python no encontrado. Instalalo desde python.org
+    echo [ERROR] Python no encontrado en el sistema.
     pause
     exit /b 1
 )
 
-REM Instalar dependencias si no están
-echo Verificando dependencias...
-pip install -r requirements.txt --quiet --disable-pip-version-check
-
-echo.
-echo Abriendo dashboard en el navegador...
-echo Cierra esta ventana para apagar la aplicacion.
-echo.
-
-REM Lanzar Flask
+echo Iniciando servidor RetailPOS...
+start http://localhost:5050
 python app.py
-
 pause
