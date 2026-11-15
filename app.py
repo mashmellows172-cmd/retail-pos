@@ -72,18 +72,21 @@ def set_excel():
 @app.route("/api/upload-excel", methods=["POST"])
 def upload_excel():
     """Recibe el Excel via multipart upload (para usar en móvil/Vercel)."""
-    if "file" not in request.files:
-        return jsonify({"ok": False, "error": "No se recibió archivo"}), 400
-    f = request.files["file"]
-    if not f.filename.endswith((".xlsx", ".xls")):
-        return jsonify({"ok": False, "error": "Solo se aceptan archivos Excel"}), 400
-    upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-    path = os.path.join(upload_dir, "current.xlsx")
-    f.save(path)
-    dl.set_excel_path(path)
-    _state["excel_path"] = path
-    return jsonify({"ok": True, "stats": dl.get_stats(path), "filename": f.filename})
+    try:
+        if "file" not in request.files:
+            return jsonify({"ok": False, "error": "No se recibió archivo"}), 400
+        f = request.files["file"]
+        if not f.filename.endswith((".xlsx", ".xls")):
+            return jsonify({"ok": False, "error": "Solo se aceptan archivos Excel"}), 400
+        upload_dir = "/tmp" if os.path.exists("/tmp") else os.path.join(os.path.dirname(__file__), "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        path = os.path.join(upload_dir, "current.xlsx")
+        f.save(path)
+        dl.set_excel_path(path)
+        _state["excel_path"] = path
+        return jsonify({"ok": True, "stats": dl.get_stats(path), "filename": f.filename})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/api/stats")
 def stats():
@@ -141,16 +144,19 @@ def csv_status():
 @app.route("/api/upload-csv", methods=["POST"])
 def upload_csv():
     """Recibe el CSV de existencias vía upload."""
-    if "file" not in request.files:
-        return jsonify({"ok": False, "error": "No se recibió archivo"}), 400
-    f = request.files["file"]
-    upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-    path = os.path.join(upload_dir, "existencias.csv")
-    f.save(path)
-    count = bu.reload_csv(path)
-    _state["csv_path"] = path
-    return jsonify({"ok": True, "records": count, "filename": f.filename})
+    try:
+        if "file" not in request.files:
+            return jsonify({"ok": False, "error": "No se recibió archivo"}), 400
+        f = request.files["file"]
+        upload_dir = "/tmp" if os.path.exists("/tmp") else os.path.join(os.path.dirname(__file__), "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        path = os.path.join(upload_dir, "existencias.csv")
+        f.save(path)
+        count = bu.reload_csv(path)
+        _state["csv_path"] = path
+        return jsonify({"ok": True, "records": count, "filename": f.filename})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/api/reload-csv", methods=["POST"])
 def reload_csv():
