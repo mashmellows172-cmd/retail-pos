@@ -22,10 +22,11 @@
 3. **`data_loader.py`**:
    - Parser multi-hoja de Excel para **CLARO**, **WOM** y **ENTEL**.
    - Normalización de datos, cálculo de precio final con descuento protegido contra negativos y optimización de búsqueda textual/numérica.
+   - Mapeo de columnas del Excel: **D (`COD BARRA`)** → `plan_barcode`, el código que se pistolea para el descuento del plan de portabilidad; **E (`PLAN`)** → `plan`, solo código interno (no es un código de barras).
 
 4. **Frontend PWA Mobile-First (`templates/index.html`, `static/manifest.json`, `static/sw.js`)**:
    - Interfaz con selector táctil por compañías y tarjetas para celulares.
-   - Bottom Sheet deslizable que despliega los códigos de barra SVG nítidos (Equipo, Plan Operador, PLU) listos para pistolear desde pantalla.
+   - Bottom Sheet deslizable que despliega los códigos de barra SVG nítidos (Equipo, Plan de Portabilidad desde la columna D, PLU) listos para pistolear desde pantalla.
    - Botón directo para copiar monto de descuento limpio.
    - Capacidad offline completa y opción para instalar en el móvil como app nativa.
 
@@ -50,3 +51,15 @@
 - El árbol de trabajo local y remoto está **100% limpio y sincronizado (`Everything up-to-date`)**.
 - Los endpoints y la carga de archivos en Vercel están totalmente probados y respondiendo `200 OK`.
 - Cualquier otro agente puede clonar directamente o continuar editando desde el repositorio `mashmellows172-cmd/retail-pos`.
+
+---
+
+## 4. Corrección reciente — código de barras del plan de portabilidad
+
+**Problema:** el código de barras del plan se generaba desde la columna **E (`PLAN`)**, un código interno de 8 dígitos que no corresponde al código que se pistolea en caja. Eso producía errores al aplicar el descuento de portabilidad.
+
+**Solución:** la API ahora expone `plan_barcode` tomado de la columna **D (`COD BARRA`)** y la UI (bottom sheet, panel de escritorio y ticket impreso) usa ese campo. La columna **E (`PLAN`)** se conserva solo como dato informativo.
+
+**Regresión cubierta:** `tests/test_plan_barcode.py` valida el mapeo D/E en las tres hojas y que la UI no vuelva a usar `prod.plan` como código de barras. Ejecutar con `python -m pytest -q`.
+
+**PWA:** se subió la versión de caché a `retailpos-v2` y las navegaciones ahora usan network-first, para que la corrección no quede oculta por el HTML cacheado en dispositivos con la app instalada.

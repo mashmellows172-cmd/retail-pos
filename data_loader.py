@@ -102,6 +102,11 @@ def _normalize(df: pd.DataFrame, operadora: str) -> pd.DataFrame:
     # Tipos
     df["plu_cod"] = pd.to_numeric(df["plu_cod"], errors="coerce").astype("Int64")
     df["cod_barra"] = pd.to_numeric(df["cod_barra"], errors="coerce").astype("Int64")
+
+    # La columna D del Excel ("COD BARRA") es el código que se pistolea en caja
+    # para aplicar el descuento del plan de portabilidad. La columna E ("PLAN")
+    # es solo el código interno del plan y NO sirve como código de barras.
+    df["plan_barcode"] = df["cod_barra"]
     df["plan"] = pd.to_numeric(df["plan"], errors="coerce").astype("Int64")
     df["descuento"] = pd.to_numeric(df["descuento"], errors="coerce").fillna(0).astype(int)
     df["precio"] = pd.to_numeric(df["precio"], errors="coerce").fillna(0).astype(int)
@@ -213,6 +218,7 @@ def _to_records(df: pd.DataFrame) -> list:
             "plu_cod": _safe_int(row.get("plu_cod")),
             "descripcion": str(row.get("descripcion", "")),
             "cod_barra": _safe_int(row.get("cod_barra")),
+            "plan_barcode": _safe_int(row.get("plan_barcode")),
             "plan": _safe_int(row.get("plan")),
             "descuento": int(row.get("descuento", 0)),
             "precio": int(row.get("precio", 0)),

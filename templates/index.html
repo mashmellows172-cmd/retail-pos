@@ -1714,7 +1714,7 @@
 
             <!-- EAN-13 -->
             <td class="py-2.5 px-3 font-mono text-emerald-400 font-semibold whitespace-nowrap">
-              ${prod.ean13 || prod.cod_barra || '-'}
+              ${prod.ean13 || prod.plu_cod || '-'}
             </td>
 
             <!-- Plan -->
@@ -1788,7 +1788,7 @@
 
       // BARCODES
       // 1. EAN-13
-      const eanCode = prod.ean13 || prod.cod_barra || prod.plu_cod || '';
+      const eanCode = prod.ean13 || prod.plu_cod || '';
       document.getElementById('sheetEanNumber').textContent = eanCode || 'Sin código';
       document.getElementById('sheetEanSourceBadge').textContent = prod.ean13_source || 'formula';
       const eanImg = document.getElementById('sheetEanImg');
@@ -1801,7 +1801,7 @@
 
       // 2. Plan
       document.getElementById('sheetPlanCarrierName').textContent = carrier;
-      const planCode = prod.plan || '';
+      const planCode = prod.plan_barcode || '';
       document.getElementById('sheetPlanNumber').textContent = planCode || 'Sin código de plan';
       const planImg = document.getElementById('sheetPlanImg');
       if (planCode) {
@@ -1875,8 +1875,8 @@
       if (carrier === 'ENTEL') badgeBg = 'bg-orange-500';
 
       const vigencia = (prod.desde && prod.hasta) ? `${formatDateShort(prod.desde)} → ${formatDateShort(prod.hasta)}` : 'Vigencia actual';
-      const eanCode = prod.ean13 || prod.cod_barra || prod.plu_cod || '';
-      const planCode = prod.plan || '';
+      const eanCode = prod.ean13 || prod.plu_cod || '';
+      const planCode = prod.plan_barcode || '';
       const pluCode = prod.plu_cod || '';
 
       inner.innerHTML = `
@@ -2005,8 +2005,8 @@
       }
 
       const carrier = prod.operadora || 'CLARO';
-      const eanCode = prod.ean13 || prod.cod_barra || prod.plu_cod || '';
-      const planCode = prod.plan || '';
+      const eanCode = prod.ean13 || prod.plu_cod || '';
+      const planCode = prod.plan_barcode || '';
       const pluCode = prod.plu_cod || '';
 
       document.getElementById('printCarrierBrand').textContent = `${carrier} • ${prod.marca || 'GENÉRICO'}`;

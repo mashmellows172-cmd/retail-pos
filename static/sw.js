@@ -1,8 +1,8 @@
 // RetailPOS Pro — Service Worker
 // Estrategia: Network first → Cache fallback para datos, Cache first para assets
 
-const CACHE_NAME = 'retailpos-v1';
-const BARCODE_CACHE = 'retailpos-barcodes-v1';
+const CACHE_NAME = 'retailpos-v2';
+const BARCODE_CACHE = 'retailpos-barcodes-v2';
 
 const APP_SHELL = [
   '/',
@@ -37,6 +37,13 @@ self.addEventListener('fetch', (e) => {
   // Barcodes SVG: cache-first (cambian poco)
   if (url.pathname.startsWith('/api/barcode-inline/')) {
     e.respondWith(cacheFirst(e.request, BARCODE_CACHE, 86400)); // 24h
+    return;
+  }
+
+  // Navegación (HTML): network-first para que las mejoras lleguen al instante.
+  // El caché queda solo como respaldo para uso offline.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(networkFirst(e.request, CACHE_NAME, 300));
     return;
   }
 

@@ -17,7 +17,7 @@ Dashboard progresivo (PWA) de ventas con planes de telefonía (**CLARO**, **WOM*
      $$\text{EAN-13} = \text{base12} + \text{check\_digit\_EAN13}$$
    - Generación SVG nítida en vivo para:
      - **Código de Barra del Equipo (EAN-13)**
-     - **Código de Barra del Plan Operador (PLAN)**
+     - **Código de Barra del Plan de Portabilidad** (columna **D – `COD BARRA`** del Excel)
      - **PLU Interno**
    - Botón directo para **Copiar Descuento** numérico limpio para la caja registradora.
 
