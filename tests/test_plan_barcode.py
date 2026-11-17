@@ -78,11 +78,12 @@ def test_codigo_de_barras_del_plan_sale_de_la_columna_d(tmp_path, operadora):
 
 
 def test_la_ui_usa_el_codigo_de_barras_de_la_columna_d():
-    html = (
-        Path(__file__).resolve().parents[1] / "templates" / "index.html"
-    ).read_text(encoding="utf-8")
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "templates" / "index.html").read_text(encoding="utf-8")
+    source += (root / "static" / "app.js").read_text(encoding="utf-8")
 
-    assert "const planCode = prod.plan_barcode || '';" in html
-    assert "const planCode = prod.plan || '';" not in html
+    assert "const planCode = prod.plan_barcode || '';" in source
+    assert "const planCode = prod.plan || '';" not in source
     # El EAN-13 del equipo nunca debe caer en la columna D (esa es del plan).
-    assert "prod.ean13 || prod.cod_barra" not in html
+    assert "prod.ean13 || prod.cod_barra" not in source
+    assert "prod.ean13 || prod.plu_cod" in source

@@ -373,8 +373,15 @@
     });
     if (panel) panel.hidden = false;
     state.pageSize = state.isDesktop ? 50 : 40;
-    if (state.isDesktop) renderDesktopTable();
-    else renderMobileList();
+    if (state.isDesktop) {
+      if (state.selected == null && state.results.length) {
+        state.selected = 0;
+        renderDetail($('desktopDetail'), state.results[0]);
+      }
+      renderDesktopTable();
+    } else {
+      renderMobileList();
+    }
     updateLoadMore();
   }
 
@@ -549,7 +556,10 @@
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') closeFilters();
+      if (event.key === 'Escape') {
+        closeFilters(false);
+        closeDetail();
+      }
     });
 
     desktopQuery = window.matchMedia('(min-width: 1024px)');
@@ -574,19 +584,22 @@
   }
 
   function openDetail(index, opener) {
+    const product = state.results[index];
+    if (!product) return;
     state.selected = index;
     state.lastFocus = opener || document.activeElement;
     if (state.isDesktop) {
       renderDesktopTable();
-      renderDetail($('desktopDetail'), state.results[index]);
-      showToast('Producto seleccionado', 'info');
+      renderDetail($('desktopDetail'), product);
       return;
     }
     const dialog = $('detailDialog');
     if (!dialog) return;
     dialog.hidden = false;
     document.body.style.overflow = 'hidden';
-    renderDetail($('detailBody'), state.results[index]);
+    const main = document.querySelector('main');
+    if (main) main.inert = true;
+    renderDetail($('detailBody'), product);
     $('detailBack')?.focus();
   }
 
@@ -595,32 +608,39 @@
     if (!dialog || dialog.hidden) return;
     dialog.hidden = true;
     document.body.style.overflow = '';
+    const main = document.querySelector('main');
+    if (main) main.inert = false;
     if (state.lastFocus && typeof state.lastFocus.focus === 'function') state.lastFocus.focus();
   }
 
-  function renderDetail(container, product) {
-    if (!container || !product) return;
+  function barcodeUrl(code) {
+    return `/api/barcode-inline/${encodeURIComponent(code)}?text=0&quiet_zone=4`;
+  }
+
+  function renderDetail(container, prod) {
+    if (!container || !prod) return;
+    const isDialog = container.id === 'detailBody';
     const title = $('detailTitle');
     const carrierLabel = $('detailCarrier');
-    if (title && container.id === 'detailBody') title.textContent = product.descripcion || 'Detalle';
-    if (carrierLabel && container.id === 'detailBody') carrierLabel.textContent = `${product.operadora || ''} · ${product.marca || ''}`;
-    const equipCode = String(product.ean13 || product.plu_cod || '');
-    const planCode = String(product.plan_barcode || '');
+    if (title && isDialog) title.textContent = prod.descripcion || 'Detalle';
+    if (carrierLabel && isDialog) carrierLabel.textContent = `${prod.operadora || ''} · ${prod.marca || ''}`;
+    const equipCode = String(prod.ean13 || prod.plu_cod || '');
+    const planCode = prod.plan_barcode || '';
     const planImg = planCode
-      ? `<img src="/api/barcode-inline/${encodeURIComponent(planCode)}?text=0&quiet_zone=4" alt="Código de barras del plan ${escapeHtml(product.operadora || '')}" loading="lazy" decoding="async">`
+      ? `<img src="${barcodeUrl(planCode)}" alt="Código de barras del plan ${escapeHtml(prod.operadora || '')}" loading="lazy" decoding="async">`
       : '';
     const equipImg = equipCode
-      ? `<img src="/api/barcode-inline/${encodeURIComponent(equipCode)}?text=0&quiet_zone=4" alt="Código de barras del equipo" loading="lazy" decoding="async">`
+      ? `<img src="${barcodeUrl(equipCode)}" alt="Código de barras del equipo" loading="lazy" decoding="async">`
       : '';
     container.innerHTML = `
       <div class="detail-summary group">
-        <div class="detail-name">${escapeHtml(product.descripcion || 'Sin descripción')}</div>
-        <div class="detail-meta"><span>PLU ${escapeHtml(product.plu_cod || '')}</span><span class="dot-sep"></span><span>Vigencia ${escapeHtml(formatRange(product.desde, product.hasta))}</span></div>
+        <div class="detail-name">${escapeHtml(prod.descripcion || 'Sin descripción')}</div>
+        <div class="detail-meta"><span>PLU ${escapeHtml(prod.plu_cod || '')}</span><span class="dot-sep"></span><span>Vigencia ${escapeHtml(formatRange(prod.desde, prod.hasta))}</span></div>
         <div class="price-line">
-          <div><div class="discount-big">${formatDiscount(product.descuento)}</div><div class="old-price">Normal ${formatCLP(product.precio)}</div></div>
-          <div class="price-right"><div class="final-big">${formatCLP(product.precio_final)}</div><div class="old-price">Precio final</div></div>
+          <div><div class="discount-big">${formatDiscount(prod.descuento)}</div><div class="old-price">Normal ${formatCLP(prod.precio)}</div></div>
+          <div class="price-right"><div class="final-big">${formatCLP(prod.precio_final)}</div><div class="old-price">Precio final</div></div>
         </div>
-        <div class="discount-copy"><button class="text-button js-copy" type="button" data-copy="${escapeHtml(String(product.descuento || ''))}" data-label="Descuento">Copiar descuento</button></div>
+        <div class="discount-copy"><button class="text-button js-copy" type="button" data-copy="${escapeHtml(String(prod.descuento || ''))}" data-label="Descuento">Copiar descuento</button></div>
       </div>
       <div class="section-title">Códigos para escanear</div>
       <section class="code-card group">
@@ -629,34 +649,99 @@
         <div class="code-foot"><button class="code-number" type="button" data-copy="${escapeHtml(equipCode)}" data-label="Código del equipo">${escapeHtml(equipCode || 'Sin código')}</button><button class="text-button code-copy" type="button" data-copy="${escapeHtml(equipCode)}" data-label="Código del equipo">Copiar</button></div>
       </section>
       <section class="code-card group">
-        <div class="code-head"><div class="code-label"><span class="step-chip">2</span>Código del plan <span class="code-carrier">· ${escapeHtml(product.operadora || '')}</span></div><span class="code-kind">COD BARRA</span></div>
+        <div class="code-head"><div class="code-label"><span class="step-chip">2</span>Código del plan <span class="code-carrier">· ${escapeHtml(prod.operadora || '')}</span></div><span class="code-kind">COD BARRA</span></div>
         <div class="barcode-box ${planCode ? '' : 'empty'}">${planCode ? planImg : 'Sin código de plan'}</div>
         <div class="code-foot"><button class="code-number" type="button" data-copy="${escapeHtml(planCode)}" data-label="Código del plan">${escapeHtml(planCode || 'Sin código de plan')}</button><button class="text-button code-copy" type="button" data-copy="${escapeHtml(planCode)}" data-label="Código del plan" ${planCode ? '' : 'disabled'}>Copiar</button></div>
       </section>
       <details class="details-row group">
         <summary><span>Más detalles</span><svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
         <div class="details-body">
-          <div class="detail-line"><span>PLU</span><b>${escapeHtml(product.plu_cod || '')}</b></div>
-          <div class="detail-line"><span>Origen EAN</span><b>${product.ean13_source === 'csv' ? 'CSV' : (product.ean13 ? 'Calculado' : 'Sin código')}</b></div>
-          <div class="detail-line"><span>Vigencia</span><b>${escapeHtml(formatRange(product.desde, product.hasta))}</b></div>
-          <div class="detail-line"><span>Precio normal</span><b>${formatCLP(product.precio)}</b></div>
+          <div class="detail-line"><span>PLU</span><b>${escapeHtml(prod.plu_cod || '')}</b></div>
+          <div class="detail-line"><span>Origen EAN</span><b>${prod.ean13_source === 'csv' ? 'CSV' : (prod.ean13 ? 'Calculado' : 'Sin código')}</b></div>
+          <div class="detail-line"><span>Vigencia</span><b>${escapeHtml(formatRange(prod.desde, prod.hasta))}</b></div>
+          <div class="detail-line"><span>Precio normal</span><b>${formatCLP(prod.precio)}</b></div>
         </div>
-      </details>`;
-    if (container.id === 'detailBody') bindCopyButtons(container);
-    else bindCopyButtons(container);
+      </details>
+      ${isDialog ? '' : '<button class="button primary block js-print" type="button">Imprimir códigos</button>'}`;
+    bindCopyButtons(container);
+    container.querySelectorAll('.js-print').forEach((button) => {
+      button.addEventListener('click', printCurrent);
+    });
+  }
+
+  function setImageSource(img, src) {
+    return new Promise((resolve) => {
+      if (!img || !src) {
+        resolve();
+        return;
+      }
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        img.onload = null;
+        img.onerror = null;
+        resolve();
+      };
+      img.onload = done;
+      img.onerror = done;
+      img.src = src;
+      window.setTimeout(done, 1500);
+    });
+  }
+
+  async function printCurrent() {
+    const prod = state.results[state.selected];
+    if (!prod) {
+      showToast('Selecciona un producto para imprimir', 'error');
+      return;
+    }
+    const equipCode = String(prod.ean13 || prod.plu_cod || '');
+    const planCode = prod.plan_barcode || '';
+    const pluCode = String(prod.plu_cod || '');
+    const setText = (id, value) => {
+      const el = $(id);
+      if (el) el.textContent = value;
+    };
+    setText('printCarrierBrand', `${prod.operadora || ''} • ${prod.marca || ''}`);
+    setText('printDescription', prod.descripcion || 'Sin descripción');
+    setText('printPlu', pluCode);
+    setText('printVigencia', `Vigencia: ${formatRange(prod.desde, prod.hasta) || 'sin fecha'}`);
+    setText('printDiscount', formatDiscount(prod.descuento));
+    setText('printNormalPrice', formatCLP(prod.precio));
+    setText('printFinalPrice', formatCLP(prod.precio_final));
+    setText('printCarrierPlan', prod.operadora || '');
+    setText('printEanNumber', equipCode);
+    setText('printPluNumber', pluCode);
+    document.getElementById('printPlanNumber').textContent = planCode;
+    setText('printTimestamp', new Date().toLocaleString('es-CL'));
+    await Promise.all([
+      setImageSource($('printEanImg'), equipCode ? barcodeUrl(equipCode) : ''),
+      setImageSource($('printPlanImg'), planCode ? barcodeUrl(planCode) : ''),
+      setImageSource($('printPluBarcodeImg'), pluCode ? barcodeUrl(pluCode) : ''),
+    ]);
+    window.print();
   }
 
   function bindCopyButtons(container) {
     container.querySelectorAll('[data-copy]').forEach((button) => {
-      button.addEventListener('click', () => copyCode(button.dataset.copy, button.dataset.label || 'Código'));
+      button.addEventListener('click', () => copyCode(button.dataset.copy, button.dataset.label || 'Código', button));
     });
   }
 
-  async function copyCode(text, label) {
+  async function copyCode(text, label, button) {
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
       showToast(`${label} copiado`, 'success');
+      if (button && !button.dataset.originalText) {
+        button.dataset.originalText = button.textContent;
+        button.textContent = 'Copiado';
+        window.setTimeout(() => {
+          button.textContent = button.dataset.originalText;
+          delete button.dataset.originalText;
+        }, 1500);
+      }
     } catch {
       showToast('No se pudo copiar', 'error');
     }
@@ -696,6 +781,7 @@
     loadBrands();
     showState('initialState');
     $('detailBack')?.addEventListener('click', closeDetail);
+    $('btnPrintMobile')?.addEventListener('click', printCurrent);
   }
 
   window.RetailPOS = {
