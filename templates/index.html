@@ -1,2286 +1,329 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-[#0F172A] text-slate-100">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>RetailPOS Pro - Planes y Códigos de Barra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>RetailPOS Pro · Precios y códigos</title>
 
-  <!-- PWA Setup -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#0F172A">
+  <meta name="theme-color" content="#F2F2F7">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="RetailPOS Pro">
-
-  <!-- Service Worker Registration -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
-    }
-  </script>
-
-  <!-- Google Fonts: Inter + JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <!-- Tailwind CSS via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          },
-          colors: {
-            'bg-base': '#0F172A',
-            'bg-card': '#1E293B',
-            'bg-elevated': '#263548',
-            'text-primary': '#F1F5F9',
-            'text-secondary': '#94A3B8',
-            'accent-green': '#10B981',
-            'accent-green-bg': '#064E3B',
-            'carrier-claro': '#E8003D',
-            'carrier-wom': '#6B2D8B',
-            'carrier-entel': '#FF6B00',
-            'carrier-todas': '#3B82F6',
-          }
-        }
-      }
-    };
-  </script>
-
-  <style>
-    /* Prevent rubber-banding on mobile, smooth scroll */
-    html, body {
-      overscroll-behavior-y: contain;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    /* Custom scrollbars */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #0F172A;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #334155;
-      border-radius: 9999px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #475569;
-    }
-
-    /* Crisp Barcodes */
-    .barcode-img {
-      image-rendering: -webkit-optimize-contrast;
-      image-rendering: crisp-edges;
-    }
-
-    /* Transitions */
-    .sheet-transition {
-      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
-    }
-
-    /* Skeleton shimmer */
-    @keyframes shimmer {
-      0% { background-position: -200% 0; }
-      100% { background-position: 200% 0; }
-    }
-    .skeleton-box {
-      background: linear-gradient(90deg, #1E293B 25%, #263548 50%, #1E293B 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-    }
-
-    /* Print Ticket Styles */
-    @media print {
-      body * {
-        visibility: hidden !important;
-      }
-      #printTicketContainer, #printTicketContainer * {
-        visibility: visible !important;
-      }
-      #printTicketContainer {
-        display: block !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100vw !important;
-        margin: 0 !important;
-        padding: 24px !important;
-        background: #ffffff !important;
-        color: #000000 !important;
-        box-shadow: none !important;
-        z-index: 999999 !important;
-      }
-      .no-print {
-        display: none !important;
-      }
-      .print-barcode-wrapper {
-        border: 2px dashed #000 !important;
-        padding: 10px !important;
-        margin-bottom: 12px !important;
-        page-break-inside: avoid !important;
-      }
-    }
-  </style>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="RetailPOS">
+  <link rel="apple-touch-icon" href="/static/icons/icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
 </head>
+<body>
+  <a class="skip-link" href="#main">Saltar al contenido</a>
 
-<body class="min-h-full bg-[#0F172A] text-[#F1F5F9] font-sans flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
-
-  <!-- ============================================================ -->
-  <!-- 0. OFFLINE BANNER                                            -->
-  <!-- ============================================================ -->
-  <div id="offlineBanner" class="hidden bg-amber-400 text-slate-950 px-4 py-2 text-center text-xs sm:text-sm font-bold flex items-center justify-center gap-2 fixed top-0 left-0 right-0 z-50 shadow-md">
-    <svg class="w-4 h-4 text-slate-950 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-    </svg>
-    <span>Sin conexión — mostrando datos en caché</span>
+  <div id="offlineBanner" class="offline-banner" role="status" hidden>
+    <span class="offline-dot" aria-hidden="true"></span>
+    <span id="offlineBannerText">Sin conexión — mostrando datos guardados</span>
   </div>
 
-  <!-- ============================================================ -->
-  <!-- 1. TOAST NOTIFICATION CONTAINER                              -->
-  <!-- ============================================================ -->
-  <div id="toastContainer" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none w-full max-w-sm px-4"></div>
-
-  <!-- ============================================================ -->
-  <!-- 2. HEADER (Fixed top, full width, 56px, #0F172A)             -->
-  <!-- ============================================================ -->
-  <header class="fixed top-0 left-0 right-0 h-14 bg-[#0F172A] border-b border-slate-800 flex items-center justify-between px-4 z-40 select-none">
-    
-    <!-- Left: Logo & Subtitle -->
-    <div class="flex items-center gap-2.5 min-w-0">
-      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-rose-600 via-purple-600 to-blue-500 flex items-center justify-center shadow flex-shrink-0">
-        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
-        </svg>
-      </div>
-      <div class="flex flex-col min-w-0">
-        <div class="flex items-center gap-1.5 leading-none">
-          <span class="text-white font-extrabold text-base tracking-tight truncate">RetailPOS Pro</span>
-          <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">PWA</span>
-        </div>
-        <span id="headerSubtitle" class="text-[11px] text-[#94A3B8] font-medium mt-0.5 truncate">W45 | 11-17 Nov</span>
-      </div>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-copy">
+        <span class="brand-title">RetailPOS</span>
+        <span id="headerWeek" class="brand-sub">Sin precios cargados</span>
+      </span>
     </div>
 
-    <!-- Right: Status Pill & Hamburger Menu Button -->
-    <div class="flex items-center gap-2">
-      <!-- Connection status pill -->
-      <div id="connectionPill" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/80 text-[11px] font-medium text-slate-300">
-        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-        <span id="connectionText">Online</span>
+    <div class="header-right">
+      <div id="connectionPill" class="connection" aria-live="polite">
+        <span id="connectionDot" class="connection-dot" aria-hidden="true"></span>
+        <span id="connectionText">En línea</span>
       </div>
-
-      <!-- Hamburger Menu (☰) -->
-      <button 
-        id="btnHamburger" 
-        type="button" 
-        onclick="toggleDrawer()"
-        class="w-10 h-10 flex items-center justify-center rounded-xl bg-[#1E293B] hover:bg-[#263548] active:scale-95 text-slate-200 border border-slate-700/80 transition-all shadow-sm"
-        aria-label="Abrir menú"
-        title="Menú">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+      <nav class="desktop-nav" aria-label="Principal">
+        <button id="desktopTabSearch" class="desktop-nav-item active" type="button" data-view="search" aria-current="page">Buscar</button>
+        <button id="desktopTabStats" class="desktop-nav-item" type="button" data-view="stats">Stats</button>
+        <button id="desktopTabConfig" class="desktop-nav-item" type="button" data-view="config">Config</button>
+      </nav>
     </div>
   </header>
 
-  <!-- ============================================================ -->
-  <!-- 3. TOP STICKY BAR: CARRIER TABS + SEARCH + FILTERS          -->
-  <!-- ============================================================ -->
-  <div id="stickyTopBar" class="fixed top-14 left-0 right-0 bg-[#0F172A]/95 backdrop-blur-md border-b border-slate-800/90 z-30 transition-all">
-    <div class="max-w-7xl mx-auto px-3 sm:px-4 pt-2.5 pb-2.5 flex flex-col gap-2">
-      
-      <!-- Carrier Selector Tabs (Horizontally scrollable) -->
-      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 select-none" id="carrierTabsContainer">
-        
-        <!-- TODAS -->
-        <button 
-          id="tabTODAS"
-          onclick="selectCarrier('TODAS')"
-          type="button"
-          class="carrier-tab flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-[#3B82F6] text-white shadow-md shadow-blue-900/30">
-          <span>TODAS</span>
-          <span id="badgeCountTODAS" class="text-[11px] font-mono opacity-90">(0)</span>
-        </button>
+  <main id="main" class="app-main">
+    <section id="viewSearch" class="view active" data-view="search" aria-labelledby="searchTitle">
+      <h1 id="searchTitle" class="visually-hidden">Precios y códigos</h1>
 
-        <!-- CLARO -->
-        <button 
-          id="tabCLARO"
-          onclick="selectCarrier('CLARO')"
-          type="button"
-          class="carrier-tab flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-[#1E293B] text-slate-300 hover:text-white border border-slate-700/80">
-          <span class="w-2 h-2 rounded-full bg-[#E8003D]"></span>
-          <span>CLARO</span>
-          <span id="badgeCountCLARO" class="text-[11px] font-mono opacity-80">(0)</span>
-        </button>
-
-        <!-- WOM -->
-        <button 
-          id="tabWOM"
-          onclick="selectCarrier('WOM')"
-          type="button"
-          class="carrier-tab flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-[#1E293B] text-slate-300 hover:text-white border border-slate-700/80">
-          <span class="w-2 h-2 rounded-full bg-[#6B2D8B]"></span>
-          <span>WOM</span>
-          <span id="badgeCountWOM" class="text-[11px] font-mono opacity-80">(0)</span>
-        </button>
-
-        <!-- ENTEL -->
-        <button 
-          id="tabENTEL"
-          onclick="selectCarrier('ENTEL')"
-          type="button"
-          class="carrier-tab flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-[#1E293B] text-slate-300 hover:text-white border border-slate-700/80">
-          <span class="w-2 h-2 rounded-full bg-[#FF6B00]"></span>
-          <span>ENTEL</span>
-          <span id="badgeCountENTEL" class="text-[11px] font-mono opacity-80">(0)</span>
-        </button>
-
-      </div>
-
-      <!-- Search Bar (Full width, 48px height) -->
-      <div class="relative flex items-center w-full">
-        <div class="absolute left-3.5 flex items-center pointer-events-none text-slate-400">
-          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
-        </div>
-
-        <input 
-          type="text" 
-          id="searchInput" 
-          autofocus
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="🔍 Escanea o escribe..."
-          class="w-full h-12 pl-11 pr-20 rounded-xl bg-[#1E293B] border border-slate-700/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-[#F1F5F9] placeholder-slate-400 text-sm md:text-base font-medium transition-all shadow-inner outline-none">
-
-        <!-- Search Right Controls: Clear button + Filter toggle -->
-        <div class="absolute right-2 flex items-center gap-1.5">
-          <!-- Clear Button (visible when text entered) -->
-          <button 
-            id="btnClearSearch" 
-            type="button" 
-            onclick="clearSearchInput()"
-            class="hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 active:scale-95 transition-all"
-            title="Limpiar búsqueda">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-
-          <!-- Toggle Filter Button -->
-          <button 
-            id="btnToggleFilters" 
-            type="button" 
-            onclick="toggleFiltersRow()"
-            class="h-8 px-2.5 flex items-center gap-1 rounded-lg bg-[#263548] hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-600/70 transition-all shadow-sm">
-            <span>Filtros</span>
-            <span id="filterArrowIcon" class="text-[10px] transition-transform">▾</span>
-            <span id="activeFiltersDot" class="hidden w-2 h-2 rounded-full bg-emerald-400 ml-0.5"></span>
+      <div class="search-row">
+        <div class="search-field">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="m20 20-3.6-3.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+          <input id="searchInput" type="search" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Escanea el código o busca…" aria-label="Buscar equipo por código o modelo">
+          <button id="btnClearSearch" class="icon-button search-clear" type="button" aria-label="Limpiar búsqueda" hidden>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
           </button>
         </div>
+        <button id="btnOpenFilters" class="filter-button" type="button" aria-haspopup="dialog" aria-controls="filterSheet">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+          <span>Filtros</span>
+          <span id="activeFilterCount" class="filter-count" hidden>0</span>
+        </button>
       </div>
 
-      <!-- Collapsible Filters Row (hidden by default on mobile) -->
-      <div id="filtersRow" class="hidden pt-1 pb-1 border-t border-slate-800/80 transition-all">
-        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-          
-          <!-- Brand dropdown -->
-          <div class="flex-shrink-0 min-w-[140px] max-w-[170px]">
-            <label for="brandFilter" class="sr-only">Marca</label>
-            <div class="relative">
-              <select 
-                id="brandFilter" 
-                onchange="onFilterChange()"
-                class="w-full h-9 px-2.5 pr-7 rounded-lg bg-[#1E293B] border border-slate-700/80 focus:border-emerald-500 text-xs text-slate-200 outline-none appearance-none cursor-pointer">
-                <option value="">Todas las marcas</option>
-              </select>
-              <div class="absolute right-2 top-2.5 pointer-events-none text-slate-400">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          </div>
+      <div id="carrierSegmented" class="segmented" role="tablist" aria-label="Operadora">
+        <button id="carrierTodas" class="segment active" type="button" role="tab" data-carrier="TODAS" aria-selected="true" aria-controls="resultsPanel">
+          <span class="seg-label">Todas</span><span id="countTODAS" class="seg-count">—</span>
+        </button>
+        <button id="carrierClaro" class="segment" type="button" role="tab" data-carrier="CLARO" aria-selected="false" aria-controls="resultsPanel">
+          <span class="seg-label">Claro</span><span id="countCLARO" class="seg-count">—</span>
+        </button>
+        <button id="carrierWom" class="segment" type="button" role="tab" data-carrier="WOM" aria-selected="false" aria-controls="resultsPanel">
+          <span class="seg-label">WOM</span><span id="countWOM" class="seg-count">—</span>
+        </button>
+        <button id="carrierEntel" class="segment" type="button" role="tab" data-carrier="ENTEL" aria-selected="false" aria-controls="resultsPanel">
+          <span class="seg-label">Entel</span><span id="countENTEL" class="seg-count">—</span>
+        </button>
+      </div>
 
-          <!-- Min Discount input -->
-          <div class="flex-shrink-0 w-28">
-            <label for="minDctoFilter" class="sr-only">Min Descuento</label>
-            <div class="relative">
-              <span class="absolute left-2.5 top-2 text-slate-500 font-mono text-xs">$</span>
-              <input 
-                type="number" 
-                id="minDctoFilter" 
-                step="5000"
-                placeholder="Min Dcto"
-                oninput="debouncedSearch()"
-                class="w-full h-9 pl-6 pr-2 rounded-lg bg-[#1E293B] border border-slate-700/80 focus:border-emerald-500 text-xs font-mono text-emerald-400 placeholder-slate-500 outline-none">
-            </div>
-          </div>
+      <div id="activeFiltersBar" class="active-filters" hidden>
+        <span id="activeFiltersText">0 filtros activos</span>
+        <button id="btnClearFiltersInline" class="text-button" type="button">Limpiar</button>
+      </div>
 
-          <!-- Max Price input -->
-          <div class="flex-shrink-0 w-28">
-            <label for="maxPriceFilter" class="sr-only">Max Precio</label>
-            <div class="relative">
-              <span class="absolute left-2.5 top-2 text-slate-500 font-mono text-xs">$</span>
-              <input 
-                type="number" 
-                id="maxPriceFilter" 
-                step="10000"
-                placeholder="Max Precio"
-                oninput="debouncedSearch()"
-                class="w-full h-9 pl-6 pr-2 rounded-lg bg-[#1E293B] border border-slate-700/80 focus:border-emerald-500 text-xs font-mono text-slate-200 placeholder-slate-500 outline-none">
-            </div>
-          </div>
-
-          <!-- Limpiar button -->
-          <button 
-            type="button" 
-            onclick="clearAllFilters()"
-            class="flex-shrink-0 h-9 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-all">
-            Limpiar
+      <section id="filterSheet" class="filter-sheet" role="dialog" aria-modal="true" aria-labelledby="filterTitle" hidden>
+        <div class="sheet-grabber" aria-hidden="true"></div>
+        <div class="sheet-head">
+          <h2 id="filterTitle">Filtros</h2>
+          <button id="filterClose" class="icon-button" type="button" aria-label="Cerrar">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
           </button>
         </div>
+        <div class="filter-fields">
+          <label class="field">
+            <span>Marca</span>
+            <select id="brandFilter"><option value="">Todas las marcas</option></select>
+          </label>
+          <label class="field">
+            <span>Descuento mínimo</span>
+            <input id="minDctoFilter" type="number" inputmode="numeric" min="0" step="1000" placeholder="$0">
+          </label>
+          <label class="field">
+            <span>Precio máximo</span>
+            <input id="maxPriceFilter" type="number" inputmode="numeric" min="0" step="1000" placeholder="Sin límite">
+          </label>
+        </div>
+        <div class="sheet-actions">
+          <button id="applyFilters" class="button primary block" type="button">Aplicar filtros</button>
+          <button id="filterClear" class="text-button block" type="button">Limpiar</button>
+        </div>
+      </section>
+
+      <div class="results-head">
+        <div id="resultsCount" class="results-count" aria-live="polite"></div>
+        <button id="btnForceAll" class="text-button force-all" type="button">Ver todo el catálogo</button>
       </div>
 
-    </div>
-  </div>
-
-  <!-- Spacer to prevent content overlap with fixed header + sticky top bar -->
-  <div id="stickySpacer" class="h-32 sm:h-34"></div>
-
-  <!-- ============================================================ -->
-  <!-- 4. MAIN CONTENT CONTAINER (3 Views)                          -->
-  <!-- ============================================================ -->
-  <main class="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-4 py-3 mb-16">
-
-    <!-- ──────────────────────────────────────────────────────────── -->
-    <!-- VIEW 1: SEARCH / RESULTS (Main POS View)                     -->
-    <!-- ──────────────────────────────────────────────────────────── -->
-    <section id="viewSearch" class="view-panel flex flex-col gap-3">
-      
-      <!-- Results Subheader / Info Bar -->
-      <div class="flex items-center justify-between text-xs text-[#94A3B8] px-1">
-        <div class="flex items-center gap-2">
-          <span id="resultsCountBadge" class="font-semibold text-slate-200">Buscando productos...</span>
-          <span id="loadingIndicator" class="hidden items-center gap-1.5 text-emerald-400">
-            <svg class="animate-spin h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span class="text-[11px]">Actualizando...</span>
+      <div id="searchStates">
+        <div id="initialState" class="state-card group">
+          <span class="state-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M4 5v14M7 5v14M10 5v9M13 5v14M16 5v9M19 5v14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
           </span>
+          <h2>Escanea o busca un equipo</h2>
+          <p>Encuentra el descuento y muestra los códigos en el orden que los pide la caja.</p>
+          <ol class="steps">
+            <li><span class="step-num">1</span><span><b>Escanea el código del equipo</b><small>EAN-13 o PLU interno</small></span></li>
+            <li><span class="step-num">2</span><span><b>Revisa el descuento</b><small>Confirma el precio final antes de continuar</small></span></li>
+            <li><span class="step-num">3</span><span><b>Muestra el código del plan</b><small>El código que aplica la portabilidad</small></span></li>
+          </ol>
         </div>
 
-        <div class="text-[11px] text-slate-400 hidden sm:block">
-          Presiona <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-slate-300">Enter</kbd> para escanear
+        <div id="skeletonState" class="skeleton-list" hidden aria-label="Cargando productos">
+          <span class="skeleton-row"></span><span class="skeleton-row"></span><span class="skeleton-row"></span>
+        </div>
+
+        <div id="noDataState" class="state-card group" hidden>
+          <h2>No hay precios cargados</h2>
+          <p>Sube el Excel semanal para habilitar la búsqueda de equipos.</p>
+          <button class="button primary" type="button" data-goto="config">Ir a Configuración</button>
+        </div>
+
+        <div id="emptyState" class="state-card group" hidden>
+          <h2>No encontramos ese producto</h2>
+          <p>Prueba con otro modelo, PLU o código de barras.</p>
+          <button id="btnEmptyClear" class="button secondary" type="button">Limpiar filtros</button>
+        </div>
+
+        <div id="errorState" class="state-card group" hidden>
+          <h2>No pudimos conectar</h2>
+          <p>Revisa la conexión e inténtalo otra vez.</p>
+          <button id="btnRetry" class="button primary" type="button">Reintentar</button>
+        </div>
+
+        <div id="offlineState" class="state-card group" hidden>
+          <h2>Sin conexión</h2>
+          <p>No hay una búsqueda guardada para mostrar.</p>
+          <button id="btnOfflineRetry" class="button primary" type="button">Reintentar</button>
         </div>
       </div>
 
-      <!-- SKELETON LOADING STATE -->
-      <div id="skeletonContainer" class="hidden flex-col gap-2.5">
-        <div class="skeleton-box h-32 rounded-xl border border-slate-800"></div>
-        <div class="skeleton-box h-32 rounded-xl border border-slate-800"></div>
-        <div class="skeleton-box h-32 rounded-xl border border-slate-800"></div>
-      </div>
-
-      <!-- EMPTY STATE -->
-      <div id="emptyState" class="hidden py-14 px-4 text-center flex flex-col items-center justify-center">
-        <div class="w-16 h-16 rounded-full bg-slate-800/80 border border-slate-700/80 flex items-center justify-center mb-3 text-slate-400">
-          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h3 class="text-base font-bold text-slate-200">Sin resultados para tu búsqueda</h3>
-        <p class="text-xs text-slate-400 mt-1 max-w-xs">Verifica el código ingresado o cambia los filtros de marca y operadora.</p>
-        <button 
-          type="button" 
-          onclick="clearAllFilters()"
-          class="mt-4 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition-all">
-          Restablecer búsqueda
-        </button>
-      </div>
-
-      <!-- DESKTOP SPLIT WRAPPER (Cards on mobile ≤ 768px, Split table/detail on desktop ≥ 1024px) -->
-      <div class="lg:grid lg:grid-cols-12 lg:gap-5 items-start">
-        
-        <!-- Left Panel: Card List (Mobile) & Table View (Desktop) (60% width on desktop) -->
-        <div class="lg:col-span-7 flex flex-col gap-2.5">
-          
-          <!-- MOBILE CARD LIST (primary — ≤ 768px & tablets) -->
-          <div id="mobileCardList" class="flex flex-col gap-2.5 lg:hidden">
-            <!-- Cards rendered here via JS -->
+      <div id="resultsPanel" class="search-layout" hidden>
+        <div class="results-column">
+          <div id="resultsList" class="list-group mobile-results"></div>
+          <div id="desktopResults" class="table-card desktop-results">
+            <table>
+              <thead>
+                <tr><th scope="col">Operadora</th><th scope="col">Producto</th><th scope="col">PLU</th><th scope="col">Dcto.</th><th scope="col">Precio final</th><th scope="col"><span class="visually-hidden">Acción</span></th></tr>
+              </thead>
+              <tbody id="desktopTableBody"></tbody>
+            </table>
           </div>
-
-          <!-- DESKTOP TABLE VIEW (≥ 1024px) -->
-          <div id="desktopTableView" class="hidden lg:block overflow-hidden bg-[#1E293B] border border-slate-800 rounded-2xl shadow-xl">
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr class="bg-slate-900/80 border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider select-none">
-                    <th class="py-3 px-3">Operadora</th>
-                    <th class="py-3 px-3">Marca</th>
-                    <th class="py-3 px-3 min-w-[180px]">Descripción</th>
-                    <th class="py-3 px-3 font-mono">PLU</th>
-                    <th class="py-3 px-3 font-mono">EAN-13</th>
-                    <th class="py-3 px-3 font-mono">Plan</th>
-                    <th class="py-3 px-3 text-right">DCTO</th>
-                    <th class="py-3 px-3 text-right">Precio</th>
-                    <th class="py-3 px-3 text-right">P. Final</th>
-                  </tr>
-                </thead>
-                <tbody id="desktopTableBody" class="divide-y divide-slate-800/80">
-                  <!-- Rows rendered here via JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-
+          <button id="loadMore" class="text-button block load-more" type="button" hidden>Cargar más</button>
         </div>
 
-        <!-- Right Panel: Desktop Selected Product Detail with Barcodes (40% width, sticky) -->
-        <div class="hidden lg:block lg:col-span-5 sticky top-36">
-          <div id="desktopDetailPanel" class="bg-[#1E293B] border border-slate-800 rounded-2xl p-4 shadow-xl">
-            
-            <!-- No Selection State -->
-            <div id="desktopDetailEmpty" class="py-16 text-center flex flex-col items-center justify-center text-slate-400">
-              <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3">
-                <svg class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                </svg>
-              </div>
-              <h4 class="text-sm font-bold text-slate-300">Ningún producto seleccionado</h4>
-              <p class="text-xs text-slate-400 mt-1 max-w-xs">Selecciona un producto de la tabla para visualizar sus códigos de barra para escaneo directo.</p>
-            </div>
-
-            <!-- Active Selected Product Container -->
-            <div id="desktopDetailContent" class="hidden flex-col gap-3.5">
-              <!-- Header info rendered via JS -->
-              <div id="desktopDetailInner"></div>
-            </div>
-
+        <aside id="desktopDetail" class="desktop-detail" aria-label="Detalle del producto">
+          <div class="detail-empty">
+            <p>Selecciona un producto para ver sus códigos</p>
           </div>
-        </div>
-
+        </aside>
       </div>
-
     </section>
 
-    <!-- ──────────────────────────────────────────────────────────── -->
-    <!-- VIEW 2: STATS VIEW                                           -->
-    <!-- ──────────────────────────────────────────────────────────── -->
-    <section id="viewStats" class="view-panel hidden flex-col gap-4">
-      
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-black text-white">Estadísticas por Operadora</h2>
-          <p class="text-xs text-slate-400">Resumen de catálogo, descuentos máximos y rango de precios vigentes.</p>
-        </div>
-        <button 
-          type="button" 
-          onclick="fetchStats(true)" 
-          class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 flex items-center gap-1.5 border border-slate-700 transition-all">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
-          <span>Actualizar</span>
-        </button>
-      </div>
-
-      <!-- Carrier Stats Cards Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="statsCardsContainer">
-        
-        <!-- CLARO Card -->
-        <div onclick="selectCarrierAndSearch('CLARO')" class="cursor-pointer bg-[#1E293B] hover:bg-[#263548] border-l-4 border-l-[#E8003D] border border-slate-700/80 rounded-2xl p-4 shadow-lg transition-all active:scale-[0.99]">
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-[#E8003D]"></span>
-              <span class="text-sm font-black text-[#E8003D] tracking-wider">CLARO</span>
-            </div>
-            <span id="statClaroBrands" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20">-- marcas</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2 mt-3">
-            <div>
-              <div class="text-[10px] uppercase font-bold text-slate-400">Total Equipos</div>
-              <div id="statClaroTotal" class="text-2xl font-black text-white font-mono mt-0.5">--</div>
-            </div>
-            <div>
-              <div class="text-[10px] uppercase font-bold text-slate-400">Máx. Descuento</div>
-              <div id="statClaroMaxDcto" class="text-xl font-black text-emerald-400 font-mono mt-0.5">--</div>
-            </div>
-          </div>
-          <div class="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs">
-            <span class="text-slate-400">Rango Precios:</span>
-            <span id="statClaroPriceRange" class="font-mono font-semibold text-slate-200">--</span>
-          </div>
-          <div class="mt-2 text-right">
-            <span class="text-[11px] font-bold text-blue-400">Ver catálogo CLARO →</span>
-          </div>
-        </div>
-
-        <!-- WOM Card -->
-        <div onclick="selectCarrierAndSearch('WOM')" class="cursor-pointer bg-[#1E293B] hover:bg-[#263548] border-l-4 border-l-[#6B2D8B] border border-slate-700/80 rounded-2xl p-4 shadow-lg transition-all active:scale-[0.99]">
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-[#6B2D8B]"></span>
-              <span class="text-sm font-black text-purple-400 tracking-wider">WOM</span>
-            </div>
-            <span id="statWomBrands" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">-- marcas</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2 mt-3">
-            <div>
-              <div class="text-[10px] uppercase font-bold text-slate-400">Total Equipos</div>
-              <div id="statWomTotal" class="text-2xl font-black text-white font-mono mt-0.5">--</div>
-            </div>
-            <div>
-              <div class="text-[10px] uppercase font-bold text-slate-400">Máx. Descuento</div>
-              <div id="statWomMaxDcto" class="text-xl font-black text-emerald-400 font-mono mt-0.5">--</div>
-            </div>
-          </div>
-          <div class="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs">
-            <span class="text-slate-400">Rango Precios:</span>
-            <span id="statWomPriceRange" class="font-mono font-semibold text-slate-200">--</span>
-          </div>
-          <div class="mt-2 text-right">
-            <span class="text-[11px] font-bold text-blue-400">Ver catálogo WOM →</span>
-          </div>
-        </div>
-
-        <!-- ENTEL Card -->
-        <div onclick="selectCarrierAndSearch('ENTEL')" class="cursor-pointer bg-[#1E293B] hover:bg-[#263548] border-l-4 border-l-[#FF6B00] border border-slate-700/80 rounded-2xl p-4 shadow-lg transition-all active:scale-[0.99]">
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-[#FF6B00]"></span>
-              <span class="text-sm font-black text-orange-400 tracking-wider">ENTEL</span>
-            </div>
-            <span id="statEntelBrands" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-300 border border-orange-500/20">-- marcas</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2 mt-3">
-            <div>
-              <div class="text-[10px] uppercase font-bold text-slate-400">Total Equipos</div>
-              <div id="statEntelTotal" class="text-2xl font-black text-white font-mono mt-0.5">--</div>
-            </div>
-            <div>
-              <div class="text-[10px] uppercase font-bold text-slate-400">Máx. Descuento</div>
-              <div id="statEntelMaxDcto" class="text-xl font-black text-emerald-400 font-mono mt-0.5">--</div>
-            </div>
-          </div>
-          <div class="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs">
-            <span class="text-slate-400">Rango Precios:</span>
-            <span id="statEntelPriceRange" class="font-mono font-semibold text-slate-200">--</span>
-          </div>
-          <div class="mt-2 text-right">
-            <span class="text-[11px] font-bold text-blue-400">Ver catálogo ENTEL →</span>
-          </div>
-        </div>
-
-      </div>
-
+    <section id="viewStats" class="view" data-view="stats" aria-labelledby="statsTitle" hidden>
+      <h1 id="statsTitle" class="large-title">Estadísticas</h1>
+      <p class="large-sub">Resumen del catálogo vigente</p>
+      <div id="statsGrid" class="stats-grid"></div>
     </section>
 
-    <!-- ──────────────────────────────────────────────────────────── -->
-    <!-- VIEW 3: CONFIG PANEL (Settings, Uploads, Diagnostics)        -->
-    <!-- ──────────────────────────────────────────────────────────── -->
-    <section id="viewConfig" class="view-panel hidden flex-col gap-5">
-      
-      <div>
-        <h2 class="text-lg font-black text-white">Configuración del Sistema</h2>
-        <p class="text-xs text-slate-400">Administra las fuentes de datos Excel, referencias CSV y caché offline.</p>
-      </div>
+    <section id="viewConfig" class="view" data-view="config" aria-labelledby="configTitle" hidden>
+      <h1 id="configTitle" class="large-title">Configuración</h1>
+      <p class="large-sub">Fuentes de datos y caché offline</p>
 
-      <!-- Upload Excel Section -->
-      <div class="bg-[#1E293B] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg">
-        <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/>
-              <path d="M8.5 13.5l2 2.5-2 2.5h1.5l1.25-1.7 1.25 1.7h1.5l-2-2.5 2-2.5H14l-1.25 1.7-1.25-1.7z"/>
-            </svg>
+      <p class="config-warning">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3.2 19.5h17.6L12 4z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M12 9.5v4.5M12 17h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span><strong>Uso administrativo.</strong> Cambiar el Excel o el CSV afecta a todos los vendedores.</span>
+      </p>
+
+      <h2 class="group-header">Datos</h2>
+      <div class="group upload-card">
+        <div class="upload-row">
+          <span class="upload-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7zM15 3v5h5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg></span>
+          <div>
+            <div class="row-title">Excel de precios</div>
+            <div class="row-sub">Archivo semanal con las hojas CLARO, WOM y ENTEL.</div>
           </div>
-          <div class="flex-1 min-w-0">
-            <h3 class="text-sm font-bold text-white">📊 Archivo Excel de Precios</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Carga el archivo semanal con las hojas CLARO, WOM y ENTEL normalizadas.</p>
-            
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
-              <button 
-                type="button" 
-                onclick="document.getElementById('excelFileInput').click()"
-                id="btnSelectExcel"
-                class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-semibold text-xs transition-all shadow-md flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                </svg>
-                <span>Seleccionar Excel...</span>
-              </button>
-
-              <div id="excelLoadingSpinner" class="hidden items-center gap-1.5 text-xs text-emerald-400">
-                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Procesando archivo...</span>
-              </div>
-            </div>
-
-            <!-- Excel Status Label -->
-            <div class="mt-3 py-2 px-3 rounded-lg bg-[#263548] border border-slate-700/80 text-xs text-slate-300 font-mono flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
-              <span class="text-slate-400">Status:</span>
-              <span id="excelStatusText" class="text-emerald-300 font-sans font-semibold truncate">Verificando archivo...</span>
-            </div>
-          </div>
+        </div>
+        <div class="upload-body">
+          <input type="file" id="excelFileInput" accept=".xlsx,.xls" hidden>
+          <button id="btnSelectExcel" class="button primary block" type="button">Seleccionar Excel…</button>
+          <div id="excelLoadingSpinner" class="upload-status" hidden><span class="spinner" aria-hidden="true"></span><span>Procesando Excel…</span></div>
+          <div class="upload-status"><span class="status-dot" aria-hidden="true"></span><span id="configExcelName">Sin archivo</span></div>
         </div>
       </div>
 
-      <!-- Upload CSV Section -->
-      <div class="bg-[#1E293B] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg">
-        <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+      <div class="group upload-card">
+        <div class="upload-row">
+          <span class="upload-icon blue" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <div>
+            <div class="row-title">CSV de existencias</div>
+            <div class="row-sub">Base maestra de EAN-13 para resolver PLUs sin fórmula.</div>
           </div>
-          <div class="flex-1 min-w-0">
-            <h3 class="text-sm font-bold text-white">📋 CSV de Existencias (códigos de barra)</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Base maestra de códigos EAN-13 para resolver PLUs que no coinciden con la fórmula algorítmica.</p>
-            
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleCsvUpload(event)">
-              <button 
-                type="button" 
-                onclick="document.getElementById('csvFileInput').click()"
-                id="btnSelectCsv"
-                class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold text-xs transition-all shadow-md flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                </svg>
-                <span>Actualizar CSV...</span>
-              </button>
-
-              <div id="csvLoadingSpinner" class="hidden items-center gap-1.5 text-xs text-blue-400">
-                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Procesando CSV...</span>
-              </div>
-            </div>
-
-            <!-- CSV Status Label -->
-            <div class="mt-3 py-2 px-3 rounded-lg bg-[#263548] border border-slate-700/80 text-xs text-slate-300 font-mono flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></span>
-              <span class="text-slate-400">Status:</span>
-              <span id="csvStatusText" class="text-blue-300 font-sans font-semibold truncate">Verificando CSV...</span>
-            </div>
-          </div>
+        </div>
+        <div class="upload-body">
+          <input type="file" id="csvFileInput" accept=".csv" hidden>
+          <button id="btnSelectCsv" class="button secondary block" type="button">Actualizar CSV…</button>
+          <div id="csvLoadingSpinner" class="upload-status blue" hidden><span class="spinner" aria-hidden="true"></span><span>Procesando CSV…</span></div>
+          <div class="upload-status blue"><span class="status-dot" aria-hidden="true"></span><span id="configCsvName">Sin archivo</span></div>
         </div>
       </div>
 
-      <!-- Cache & PWA Diagnostics -->
-      <div class="bg-[#1E293B] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg">
-        <h3 class="text-sm font-bold text-white mb-2">⚡ Diagnóstico & Caché PWA</h3>
-        <div class="space-y-2 text-xs text-slate-400">
-          <div class="flex items-center justify-between py-1.5 border-b border-slate-800">
-            <span>Versión del Servidor:</span>
-            <span id="diagVersion" class="font-mono text-slate-200">v2.0 PWA</span>
+      <h2 class="group-header">Aplicación</h2>
+      <details class="group advanced">
+        <summary class="advanced-row">
+          <span>Avanzado y caché</span>
+          <svg class="chevron icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="advanced-body">
+          <div class="advanced-line"><span>Versión del servidor</span><span id="diagVersion">v2.0</span></div>
+          <div class="advanced-line"><span>Service worker</span><span id="diagSwStatus">Verificando…</span></div>
+          <div class="advanced-line"><span>Modo offline</span><span id="diagOffline">En línea</span></div>
+          <div class="advanced-actions">
+            <button id="btnClearCache" class="button secondary" type="button">Limpiar caché</button>
+            <button id="btnReloadApp" class="button secondary" type="button">Recargar</button>
           </div>
-          <div class="flex items-center justify-between py-1.5 border-b border-slate-800">
-            <span>Service Worker:</span>
-            <span id="diagSwStatus" class="font-mono text-emerald-400">Activo</span>
-          </div>
-          <div class="flex items-center justify-between py-1.5">
-            <span>Modo de Operación:</span>
-            <span class="text-emerald-400 font-semibold">Mobile-First PWA (Vercel & Local)</span>
+          <div id="pwaInstallContainer" class="install-row" hidden>
+            <button id="btnInstallPwa" class="button primary block" type="button">Instalar RetailPOS</button>
           </div>
         </div>
-
-        <div class="mt-4 pt-3 border-t border-slate-800 flex flex-wrap gap-2.5">
-          <button 
-            type="button" 
-            onclick="clearBarcodeCache()" 
-            class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition-all">
-            Limpiar Caché de Códigos
-          </button>
-          <button 
-            type="button" 
-            onclick="window.location.reload(true)" 
-            class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition-all">
-            Recargar Aplicación
-          </button>
-        </div>
-      </div>
-
+      </details>
     </section>
-
   </main>
 
-  <!-- ============================================================ -->
-  <!-- 5. BOTTOM NAVIGATION BAR (Fixed bottom, 56px, mobile-first)  -->
-  <!-- ============================================================ -->
-  <nav class="fixed bottom-0 left-0 right-0 h-14 bg-[#0F172A] border-t border-slate-800 flex items-center justify-around px-2 z-40 select-none shadow-2xl">
-    
-    <!-- Tab 1: Buscar -->
-    <button 
-      id="navBtnBuscar" 
-      type="button" 
-      onclick="switchMainView('search')"
-      class="nav-tab-btn flex-1 h-full flex flex-col items-center justify-center gap-1 text-emerald-400 transition-all">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-      </svg>
-      <span class="text-[10px] font-bold tracking-tight">Buscar</span>
+  <nav class="tabbar" aria-label="Principal">
+    <button id="tabSearch" class="tabbar-item active" type="button" data-view="search" aria-current="page">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="m20 20-3.6-3.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      <span>Buscar</span>
     </button>
-
-    <!-- Tab 2: Stats -->
-    <button 
-      id="navBtnStats" 
-      type="button" 
-      onclick="switchMainView('stats')"
-      class="nav-tab-btn flex-1 h-full flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-200 transition-all">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-      <span class="text-[10px] font-bold tracking-tight">Stats</span>
+    <button id="tabStats" class="tabbar-item" type="button" data-view="stats">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V10M12 19V5M19 19v-6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      <span>Stats</span>
     </button>
-
-    <!-- Tab 3: Config -->
-    <button 
-      id="navBtnConfig" 
-      type="button" 
-      onclick="switchMainView('config')"
-      class="nav-tab-btn flex-1 h-full flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-200 transition-all">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-      <span class="text-[10px] font-bold tracking-tight">Config</span>
+    <button id="tabConfig" class="tabbar-item" type="button" data-view="config">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      <span>Config</span>
     </button>
-
+    <span class="home-indicator" aria-hidden="true"></span>
   </nav>
 
-  <!-- ============================================================ -->
-  <!-- 6. BOTTOM SHEET (Mobile Card Tap Detail & Barcodes)          -->
-  <!-- ============================================================ -->
-  <!-- Backdrop -->
-  <div 
-    id="sheetBackdrop" 
-    onclick="closeBottomSheet()"
-    class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-200">
+  <div id="filterBackdrop" class="sheet-backdrop" hidden></div>
+
+  <section id="detailDialog" class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detailTitle" hidden>
+    <div class="detail-nav">
+      <button id="detailBack" class="back-button" type="button" aria-label="Cerrar">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Volver</span>
+      </button>
+      <div class="detail-nav-copy">
+        <h2 id="detailTitle">Detalle</h2>
+        <span id="detailCarrier"></span>
+      </div>
+      <span class="detail-nav-spacer" aria-hidden="true"></span>
+    </div>
+    <div id="detailBody" class="detail-body"></div>
+    <div class="detail-footer">
+      <button id="btnPrintMobile" class="button primary block js-print" type="button">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V4h10v4M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v6H7z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>
+        Imprimir códigos
+      </button>
+      <span class="home-indicator" aria-hidden="true"></span>
+    </div>
+  </section>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <div id="printTicketContainer" class="print-ticket" hidden>
+    <div class="print-head">
+      <div class="print-brand">RetailPOS Pro</div>
+      <p id="printVigencia">Vigencia: 11 Nov - 17 Nov</p>
+    </div>
+    <div class="print-product">
+      <div id="printCarrierBrand">CLARO • APPLE</div>
+      <div id="printDescription">iPhone 13 128GB Blanco</div>
+      <div>PLU: <span id="printPlu">27537898</span></div>
+    </div>
+    <div class="print-price">
+      <div id="printDiscount">-$80.000</div>
+      <div><span>Normal: <s id="printNormalPrice">$499.990</s></span> <strong>Final: <span id="printFinalPrice">$419.990</span></strong></div>
+    </div>
+    <div class="print-barcode-wrapper">
+      <div class="print-label">Código del equipo</div>
+      <img id="printEanImg" src="" alt="Código de barras del equipo">
+      <div id="printEanNumber">0200027537897</div>
+    </div>
+    <div class="print-barcode-wrapper">
+      <div class="print-label">Código del plan (<span id="printCarrierPlan">CLARO</span>)</div>
+      <img id="printPlanImg" src="" alt="Código de barras del plan CLARO">
+      <div id="printPlanNumber">200028174046</div>
+    </div>
+    <div class="print-barcode-wrapper">
+      <div class="print-label">PLU interno</div>
+      <img id="printPluBarcodeImg" src="" alt="Código de barras del PLU">
+      <div id="printPluNumber">27537898</div>
+    </div>
+    <div class="print-foot">Impreso el <span id="printTimestamp"></span> • RetailPOS Pro</div>
   </div>
-
-  <!-- Sheet Container -->
-  <div 
-    id="bottomSheet" 
-    class="fixed bottom-0 left-0 right-0 max-h-[90vh] bg-[#1E293B] border-t border-slate-700/80 rounded-t-3xl z-50 flex flex-col shadow-2xl sheet-transition translate-y-full">
-    
-    <!-- Drag Handle & Close -->
-    <div class="pt-3 pb-2 px-5 flex items-center justify-between border-b border-slate-800/80 flex-shrink-0 cursor-grab active:cursor-grabbing" id="sheetHeader">
-      <div class="w-12 h-1.5 rounded-full bg-slate-600/80 mx-auto -mr-2"></div>
-      <button 
-        type="button" 
-        onclick="closeBottomSheet()"
-        class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 flex items-center justify-center transition-all"
-        aria-label="Cerrar">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Scrollable Sheet Content -->
-    <div class="overflow-y-auto px-4 sm:px-6 py-4 space-y-4" id="sheetContentScroll">
-      
-      <!-- 1. Badges & Product Name -->
-      <div class="flex items-center gap-2 flex-wrap">
-        <span id="sheetCarrierBadge" class="text-xs font-black px-2.5 py-0.5 rounded-full text-white uppercase tracking-wider bg-rose-600">CLARO</span>
-        <span id="sheetBrandBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-200 border border-slate-700">APPLE</span>
-        <span id="sheetVigenciaBadge" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-800/80 text-slate-400">11 Nov → 17 Nov</span>
-      </div>
-
-      <div>
-        <h2 id="sheetProductTitle" class="text-xl sm:text-2xl font-black text-white leading-tight">iPhone 13 128GB Blanco</h2>
-        <div class="flex items-center gap-2 text-xs text-slate-400 mt-1">
-          <span>PLU Interno: <strong id="sheetPluText" class="font-mono text-slate-200 font-bold">26726735</strong></span>
-        </div>
-      </div>
-
-      <!-- 2. Big Discount & Prices Box -->
-      <div class="bg-[#263548] border border-slate-700/80 rounded-2xl p-4 flex flex-col gap-2">
-        <div class="flex items-baseline justify-between">
-          <span class="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Descuento Especial</span>
-          <span class="text-xs text-slate-400">Precio normal: <span id="sheetOriginalPrice" class="line-through font-mono text-slate-400">$499.990</span></span>
-        </div>
-        
-        <div class="flex items-baseline justify-between">
-          <div id="sheetDiscountBig" class="text-3xl sm:text-4xl font-black text-emerald-400 font-mono tracking-tight">-$80.000</div>
-          <div class="text-right">
-            <span class="text-[10px] uppercase font-bold text-slate-400 block">Pagas en caja</span>
-            <span id="sheetFinalPrice" class="text-2xl sm:text-3xl font-black text-white font-mono">$419.990</span>
-          </div>
-        </div>
-
-        <!-- Quick Copy Discount Button -->
-        <button 
-          type="button" 
-          id="btnCopyDiscount"
-          onclick="copyCurrentDiscount()"
-          class="mt-2 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 transition-all">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-          </svg>
-          <span id="btnCopyDiscountLabel">Copiar Descuento ($80000)</span>
-        </button>
-      </div>
-
-      <!-- 3. BARCODE SECTION (THE MOST IMPORTANT PART) -->
-      <div class="space-y-4 pt-1">
-        <div class="flex items-center gap-2">
-          <h3 class="text-xs font-black uppercase tracking-wider text-slate-300">Códigos de Barra para Escaneo</h3>
-          <span class="h-px flex-1 bg-slate-800"></span>
-        </div>
-
-        <!-- BARCODE 1: EQUIPO (EAN-13) -->
-        <div class="bg-[#1E293B] border border-slate-700/80 rounded-2xl p-3.5 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-bold text-slate-200">Código Equipo (EAN-13)</span>
-              <span id="sheetEanSourceBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">formula</span>
-            </div>
-            <button 
-              type="button" 
-              onclick="copyCodeText('sheetEanNumber', 'EAN-13')"
-              class="px-2.5 py-1 rounded-lg bg-[#263548] hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs flex items-center gap-1 border border-slate-600 transition-all">
-              <span>📋</span>
-              <span>Copiar</span>
-            </button>
-          </div>
-
-          <!-- Large barcode SVG -->
-          <div class="bg-white rounded-xl p-3 flex items-center justify-center min-h-[90px] overflow-hidden">
-            <img id="sheetEanImg" src="" alt="EAN-13 Barcode" class="w-full max-h-24 object-contain barcode-img">
-          </div>
-
-          <!-- Monospace 18px Number below -->
-          <div class="text-center font-mono text-lg font-extrabold tracking-widest text-slate-100" id="sheetEanNumber">0200026726735</div>
-        </div>
-
-        <!-- BARCODE 2: PLAN OPERADORA -->
-        <div class="bg-[#1E293B] border border-slate-700/80 rounded-2xl p-3.5 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-200">Código Plan <span id="sheetPlanCarrierName">CLARO</span></span>
-            <button 
-              type="button" 
-              onclick="copyCodeText('sheetPlanNumber', 'Código de Plan')"
-              class="px-2.5 py-1 rounded-lg bg-[#263548] hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs flex items-center gap-1 border border-slate-600 transition-all">
-              <span>📋</span>
-              <span>Copiar</span>
-            </button>
-          </div>
-
-          <!-- Large barcode SVG -->
-          <div class="bg-white rounded-xl p-3 flex items-center justify-center min-h-[90px] overflow-hidden">
-            <img id="sheetPlanImg" src="" alt="Plan Barcode" class="w-full max-h-24 object-contain barcode-img">
-          </div>
-
-          <!-- Monospace 18px Number below -->
-          <div class="text-center font-mono text-lg font-extrabold tracking-widest text-slate-100" id="sheetPlanNumber">28174047</div>
-        </div>
-
-        <!-- BARCODE 3: PLU INTERNO -->
-        <div class="bg-[#1E293B] border border-slate-700/80 rounded-2xl p-3.5 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-200">PLU Interno</span>
-            <button 
-              type="button" 
-              onclick="copyCodeText('sheetPluNumber', 'PLU')"
-              class="px-2.5 py-1 rounded-lg bg-[#263548] hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs flex items-center gap-1 border border-slate-600 transition-all">
-              <span>📋</span>
-              <span>Copiar</span>
-            </button>
-          </div>
-
-          <!-- Large barcode SVG -->
-          <div class="bg-white rounded-xl p-3 flex items-center justify-center min-h-[90px] overflow-hidden">
-            <img id="sheetPluImg" src="" alt="PLU Barcode" class="w-full max-h-24 object-contain barcode-img">
-          </div>
-
-          <!-- Monospace 18px Number below -->
-          <div class="text-center font-mono text-lg font-extrabold tracking-widest text-slate-100" id="sheetPluNumber">26726735</div>
-        </div>
-
-      </div>
-
-      <!-- Action Footer: Print Button -->
-      <div class="pt-2 pb-6">
-        <button 
-          type="button" 
-          onclick="printCurrentSheetProduct()"
-          class="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-98 text-slate-200 hover:text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-slate-700 transition-all">
-          <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-          </svg>
-          <span>Imprimir códigos</span>
-        </button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ============================================================ -->
-  <!-- 7. HAMBURGER BOTTOM DRAWER                                   -->
-  <!-- ============================================================ -->
-  <div 
-    id="drawerBackdrop" 
-    onclick="toggleDrawer(false)"
-    class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-200">
-  </div>
-
-  <div 
-    id="drawerPanel" 
-    class="fixed bottom-0 left-0 right-0 bg-[#1E293B] border-t border-slate-700/80 rounded-t-3xl z-50 flex flex-col p-5 shadow-2xl sheet-transition translate-y-full">
-    
-    <div class="w-12 h-1.5 rounded-full bg-slate-600/80 mx-auto mb-4"></div>
-    
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-2">
-        <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-          RP
-        </div>
-        <span class="font-black text-white text-base">RetailPOS Pro</span>
-      </div>
-      <button 
-        type="button" 
-        onclick="toggleDrawer(false)" 
-        class="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-sm font-bold">
-        ✕
-      </button>
-    </div>
-
-    <div class="space-y-2 text-sm font-semibold">
-      <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Navegación Rápida</div>
-      
-      <button 
-        type="button" 
-        onclick="toggleDrawer(false); switchMainView('search');" 
-        class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-left flex items-center justify-between text-slate-200">
-        <span>🔍 Buscar Catálogo</span>
-        <span class="text-xs text-slate-400">POS</span>
-      </button>
-
-      <button 
-        type="button" 
-        onclick="toggleDrawer(false); switchMainView('stats');" 
-        class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-left flex items-center justify-between text-slate-200">
-        <span>📊 Estadísticas por Operadora</span>
-        <span class="text-xs text-slate-400">Métricas</span>
-      </button>
-
-      <button 
-        type="button" 
-        onclick="toggleDrawer(false); switchMainView('config');" 
-        class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-left flex items-center justify-between text-slate-200">
-        <span>⚙️ Configuración & Subir Excel/CSV</span>
-        <span class="text-xs text-slate-400">Ajustes</span>
-      </button>
-
-      <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-4 mb-1">Operadoras Directas</div>
-      <div class="grid grid-cols-3 gap-2">
-        <button 
-          type="button" 
-          onclick="toggleDrawer(false); selectCarrierAndSearch('CLARO');"
-          class="py-2 rounded-xl bg-[#E8003D]/20 text-[#E8003D] border border-[#E8003D]/40 font-bold text-xs text-center">
-          CLARO
-        </button>
-        <button 
-          type="button" 
-          onclick="toggleDrawer(false); selectCarrierAndSearch('WOM');"
-          class="py-2 rounded-xl bg-[#6B2D8B]/20 text-purple-400 border border-[#6B2D8B]/40 font-bold text-xs text-center">
-          WOM
-        </button>
-        <button 
-          type="button" 
-          onclick="toggleDrawer(false); selectCarrierAndSearch('ENTEL');"
-          class="py-2 rounded-xl bg-[#FF6B00]/20 text-orange-400 border border-[#FF6B00]/40 font-bold text-xs text-center">
-          ENTEL
-        </button>
-      </div>
-    </div>
-
-    <!-- PWA Install Prompt Button (if triggered) -->
-    <div id="pwaInstallContainer" class="hidden mt-4 pt-3 border-t border-slate-800">
-      <button 
-        id="btnInstallPwa"
-        type="button"
-        onclick="promptPwaInstall()"
-        class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-        </svg>
-        <span>Instalar RetailPOS Pro en tu pantalla</span>
-      </button>
-    </div>
-
-    <div class="mt-4 pt-2 text-center text-[10px] text-slate-500 font-mono">
-      RetailPOS Pro v2.0 • Offline Ready
-    </div>
-  </div>
-
-  <!-- ============================================================ -->
-  <!-- 8. PRINT VOUCHER TICKET (Visible only in @media print)       -->
-  <!-- ============================================================ -->
-  <div id="printTicketContainer" class="hidden font-sans text-black bg-white p-6 max-w-sm mx-auto">
-    <div class="text-center border-b-2 border-black pb-3 mb-3">
-      <h2 class="text-xl font-black uppercase tracking-wider">RetailPOS Pro</h2>
-      <p class="text-xs font-semibold uppercase">Voucher de Descuento</p>
-      <p id="printVigencia" class="text-xs font-mono mt-0.5">Vigencia: 11 Nov - 17 Nov</p>
-    </div>
-
-    <div class="mb-3">
-      <div class="text-xs uppercase font-bold text-gray-700" id="printCarrierBrand">CLARO • APPLE</div>
-      <div class="text-base font-black leading-tight mt-0.5" id="printDescription">iPhone 13 128GB Blanco</div>
-      <div class="text-xs font-mono mt-0.5">PLU: <span id="printPlu">26726735</span></div>
-    </div>
-
-    <div class="border-2 border-black p-2.5 rounded text-center my-3 bg-gray-50">
-      <div class="text-xs font-bold uppercase">Descuento Aplicado</div>
-      <div class="text-2xl font-black font-mono" id="printDiscount">-$80.000</div>
-      <div class="text-xs font-mono mt-1 flex justify-between px-2">
-        <span>Normal: <strike id="printNormalPrice">$499.990</strike></span>
-        <span class="font-bold">Final: <span id="printFinalPrice">$419.990</span></span>
-      </div>
-    </div>
-
-    <!-- Equipo Barcode -->
-    <div class="print-barcode-wrapper text-center my-3">
-      <div class="text-[11px] font-bold uppercase mb-1">Código Equipo (EAN-13)</div>
-      <img id="printEanImg" src="" class="w-full max-h-20 object-contain mx-auto" alt="EAN-13">
-      <div class="text-sm font-mono font-bold mt-1" id="printEanNumber">0200026726735</div>
-    </div>
-
-    <!-- Plan Barcode -->
-    <div class="print-barcode-wrapper text-center my-3">
-      <div class="text-[11px] font-bold uppercase mb-1">Código Plan (<span id="printCarrierPlan">CLARO</span>)</div>
-      <img id="printPlanImg" src="" class="w-full max-h-20 object-contain mx-auto" alt="Plan">
-      <div class="text-sm font-mono font-bold mt-1" id="printPlanNumber">28174047</div>
-    </div>
-
-    <!-- PLU Barcode -->
-    <div class="print-barcode-wrapper text-center my-3">
-      <div class="text-[11px] font-bold uppercase mb-1">PLU Interno</div>
-      <img id="printPluBarcodeImg" src="" class="w-full max-h-20 object-contain mx-auto" alt="PLU">
-      <div class="text-sm font-mono font-bold mt-1" id="printPluNumber">26726735</div>
-    </div>
-
-    <div class="text-center text-[10px] text-gray-500 font-mono mt-4 pt-2 border-t border-gray-300">
-      Impreso el <span id="printTimestamp"></span> • RetailPOS Pro
-    </div>
-  </div>
-
-  <!-- ============================================================ -->
-  <!-- 9. JAVASCRIPT APPLICATION LOGIC                              -->
-  <!-- ============================================================ -->
-  <script>
-    // ─────────────────────────────────────────────────────────────
-    // Global Application State
-    // ─────────────────────────────────────────────────────────────
-    const state = {
-      carrier: 'TODAS',      // 'TODAS' | 'CLARO' | 'WOM' | 'ENTEL'
-      searchQuery: '',
-      brand: '',
-      minDcto: '',
-      maxPrice: '',
-      results: [],
-      stats: {},
-      selectedProduct: null, // Product in Bottom Sheet or Desktop detail
-      currentView: 'search', // 'search' | 'stats' | 'config'
-      brandsList: [],
-      isLoading: false,
-    };
-
-    let searchDebounceTimer = null;
-    let deferredPrompt = null; // For PWA install
-
-    // Design Tokens & Carrier Colors
-    const CARRIER_CONFIG = {
-      TODAS: {
-        bg: '#3B82F6',
-        text: 'text-white',
-        border: 'border-blue-500/40',
-        badge: 'bg-[#3B82F6]',
-        glow: 'shadow-blue-900/30'
-      },
-      CLARO: {
-        bg: '#E8003D',
-        text: 'text-white',
-        border: 'border-[#E8003D]/40',
-        badge: 'bg-[#E8003D]',
-        glow: 'shadow-rose-900/30'
-      },
-      WOM: {
-        bg: '#6B2D8B',
-        text: 'text-white',
-        border: 'border-[#6B2D8B]/40',
-        badge: 'bg-[#6B2D8B]',
-        glow: 'shadow-purple-900/30'
-      },
-      ENTEL: {
-        bg: '#FF6B00',
-        text: 'text-white',
-        border: 'border-[#FF6B00]/40',
-        badge: 'bg-[#FF6B00]',
-        glow: 'shadow-orange-900/30'
-      }
-    };
-
-    // ─────────────────────────────────────────────────────────────
-    // Formatters
-    // ─────────────────────────────────────────────────────────────
-    function formatCLP(num) {
-      if (num === null || num === undefined || isNaN(num)) return '$0';
-      return '$' + Math.round(Number(num)).toLocaleString('es-CL');
-    }
-
-    function formatDateShort(dateStr) {
-      if (!dateStr) return '';
-      try {
-        const parts = String(dateStr).split('T')[0].split('-');
-        if (parts.length === 3) {
-          const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-          const day = parseInt(parts[2], 10);
-          const monthIdx = parseInt(parts[1], 10) - 1;
-          return `${day} ${months[monthIdx] || ''}`;
-        }
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-      } catch (e) {
-        return dateStr;
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Toast Notification System (Slide in from top, 3s duration)
-    // ─────────────────────────────────────────────────────────────
-    function showToast(message, type = 'info') {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      
-      let bgStyle = 'bg-slate-800 border-slate-700 text-white';
-      let icon = 'ℹ️';
-
-      if (type === 'success') {
-        bgStyle = 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-950/50';
-        icon = '✓';
-      } else if (type === 'error') {
-        bgStyle = 'bg-rose-600 border-rose-500 text-white shadow-rose-950/50';
-        icon = '✕';
-      } else if (type === 'warning') {
-        bgStyle = 'bg-amber-500 border-amber-400 text-slate-950 shadow-amber-950/50';
-        icon = '⚠️';
-      }
-
-      toast.className = `flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold shadow-xl transition-all duration-300 transform -translate-y-4 opacity-0 pointer-events-auto ${bgStyle}`;
-      toast.innerHTML = `
-        <span class="w-5 h-5 rounded-full bg-black/20 flex items-center justify-center font-bold text-xs flex-shrink-0">${icon}</span>
-        <span class="truncate">${message}</span>
-      `;
-
-      container.appendChild(toast);
-
-      // Animate in
-      requestAnimationFrame(() => {
-        toast.classList.remove('-translate-y-4', 'opacity-0');
-        toast.classList.add('translate-y-0', 'opacity-100');
-      });
-
-      // Animate out after 3 seconds
-      setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('-translate-y-4', 'opacity-0');
-        setTimeout(() => toast.remove(), 300);
-      }, 3000);
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Clipboard Copy Helper
-    // ─────────────────────────────────────────────────────────────
-    async function copyToClipboard(text, successMsg = 'Copiado al portapapeles') {
-      const clean = String(text || '').trim();
-      if (!clean) {
-        showToast('No hay texto para copiar', 'warning');
-        return;
-      }
-      try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(clean);
-        } else {
-          // Fallback
-          const ta = document.createElement('textarea');
-          ta.value = clean;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.focus();
-          ta.select();
-          document.execCommand('copy');
-          ta.remove();
-        }
-        showToast(successMsg, 'success');
-      } catch (err) {
-        showToast('Error al copiar: ' + err.message, 'error');
-      }
-    }
-
-    function copyCodeText(elementId, label = 'Código') {
-      const el = document.getElementById(elementId);
-      if (el) {
-        const text = el.textContent || '';
-        copyToClipboard(text, `${label} copiado: ${text}`);
-      }
-    }
-
-    function copyCurrentDiscount() {
-      if (state.selectedProduct && state.selectedProduct.descuento) {
-        const dctoStr = String(state.selectedProduct.descuento);
-        copyToClipboard(dctoStr, `Descuento copiado: ${dctoStr}`);
-      } else {
-        showToast('No hay descuento para copiar', 'warning');
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Offline Status Monitoring
-    // ─────────────────────────────────────────────────────────────
-    function updateOnlineStatus() {
-      const isOnline = navigator.onLine;
-      const banner = document.getElementById('offlineBanner');
-      const connPill = document.getElementById('connectionPill');
-      const connText = document.getElementById('connectionText');
-
-      if (!isOnline) {
-        banner.classList.remove('hidden');
-        if (connText) connText.textContent = 'Offline';
-        if (connPill) connPill.querySelector('span').className = 'w-2 h-2 rounded-full bg-amber-400';
-      } else {
-        banner.classList.add('hidden');
-        if (connText) connText.textContent = 'Online';
-        if (connPill) connPill.querySelector('span').className = 'w-2 h-2 rounded-full bg-emerald-400';
-      }
-    }
-
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
-
-    // ─────────────────────────────────────────────────────────────
-    // Main View Navigation (Buscar, Stats, Config)
-    // ─────────────────────────────────────────────────────────────
-    function switchMainView(viewName) {
-      state.currentView = viewName;
-
-      // Update Nav Buttons Styles
-      const navBuscar = document.getElementById('navBtnBuscar');
-      const navStats = document.getElementById('navBtnStats');
-      const navConfig = document.getElementById('navBtnConfig');
-
-      [navBuscar, navStats, navConfig].forEach(btn => {
-        btn.classList.remove('text-emerald-400', 'text-white');
-        btn.classList.add('text-slate-400');
-      });
-
-      // Hide all panels
-      document.getElementById('viewSearch').classList.add('hidden');
-      document.getElementById('viewStats').classList.add('hidden');
-      document.getElementById('viewConfig').classList.add('hidden');
-
-      const stickyTopBar = document.getElementById('stickyTopBar');
-      const stickySpacer = document.getElementById('stickySpacer');
-
-      if (viewName === 'search') {
-        document.getElementById('viewSearch').classList.remove('hidden');
-        navBuscar.classList.add('text-emerald-400');
-        navBuscar.classList.remove('text-slate-400');
-        stickyTopBar.classList.remove('hidden');
-        stickySpacer.classList.remove('hidden');
-        // Auto-focus input
-        const input = document.getElementById('searchInput');
-        if (input) input.focus();
-      } else if (viewName === 'stats') {
-        document.getElementById('viewStats').classList.remove('hidden');
-        navStats.classList.add('text-emerald-400');
-        navStats.classList.remove('text-slate-400');
-        stickyTopBar.classList.add('hidden');
-        stickySpacer.classList.add('hidden');
-        fetchStats();
-      } else if (viewName === 'config') {
-        document.getElementById('viewConfig').classList.remove('hidden');
-        navConfig.classList.add('text-emerald-400');
-        navConfig.classList.remove('text-slate-400');
-        stickyTopBar.classList.add('hidden');
-        stickySpacer.classList.add('hidden');
-        fetchCsvStatus();
-        fetchPingStatus();
-      }
-
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Carrier Selector Tabs
-    // ─────────────────────────────────────────────────────────────
-    function selectCarrier(carrierName) {
-      state.carrier = carrierName;
-      updateCarrierTabStyles();
-      loadBrands();
-      performSearch();
-    }
-
-    function selectCarrierAndSearch(carrierName) {
-      selectCarrier(carrierName);
-      switchMainView('search');
-    }
-
-    function updateCarrierTabStyles() {
-      const carriers = ['TODAS', 'CLARO', 'WOM', 'ENTEL'];
-      carriers.forEach(c => {
-        const tab = document.getElementById(`tab${c}`);
-        if (!tab) return;
-        
-        if (state.carrier === c) {
-          // Active Tab Styling
-          if (c === 'TODAS') {
-            tab.className = 'carrier-tab flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-[#3B82F6] text-white shadow-md shadow-blue-900/30';
-          } else if (c === 'CLARO') {
-            tab.className = 'carrier-tab flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-[#E8003D] text-white shadow-md shadow-rose-900/30';
-          } else if (c === 'WOM') {
-            tab.className = 'carrier-tab flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-[#6B2D8B] text-white shadow-md shadow-purple-900/30';
-          } else if (c === 'ENTEL') {
-            tab.className = 'carrier-tab flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-[#FF6B00] text-white shadow-md shadow-orange-900/30';
-          }
-        } else {
-          // Inactive Tab Styling
-          tab.className = 'carrier-tab flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-[#1E293B] text-slate-300 hover:text-white border border-slate-700/80';
-        }
-      });
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Search Input & Filters Logic
-    // ─────────────────────────────────────────────────────────────
-    function initSearchControls() {
-      const searchInput = document.getElementById('searchInput');
-      const btnClear = document.getElementById('btnClearSearch');
-
-      searchInput.addEventListener('input', (e) => {
-        const val = e.target.value;
-        btnClear.classList.toggle('hidden', val.length === 0);
-        state.searchQuery = val;
-        debouncedSearch();
-      });
-
-      searchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-          performSearch();
-        }
-      });
-
-      // Autofocus immediately
-      searchInput.focus();
-    }
-
-    function clearSearchInput() {
-      const searchInput = document.getElementById('searchInput');
-      searchInput.value = '';
-      state.searchQuery = '';
-      document.getElementById('btnClearSearch').classList.add('hidden');
-      performSearch();
-      searchInput.focus();
-    }
-
-    function debouncedSearch() {
-      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(() => {
-        performSearch();
-      }, 300);
-    }
-
-    function toggleFiltersRow() {
-      const row = document.getElementById('filtersRow');
-      const arrow = document.getElementById('filterArrowIcon');
-      const isHidden = row.classList.contains('hidden');
-      
-      if (isHidden) {
-        row.classList.remove('hidden');
-        arrow.textContent = '▴';
-      } else {
-        row.classList.add('hidden');
-        arrow.textContent = '▾';
-      }
-    }
-
-    function onFilterChange() {
-      state.brand = document.getElementById('brandFilter').value;
-      updateActiveFiltersBadge();
-      performSearch();
-    }
-
-    function updateActiveFiltersBadge() {
-      const minDctoVal = document.getElementById('minDctoFilter').value;
-      const maxPriceVal = document.getElementById('maxPriceFilter').value;
-      const brandVal = document.getElementById('brandFilter').value;
-      const dot = document.getElementById('activeFiltersDot');
-
-      const hasActive = (brandVal !== '') || (minDctoVal !== '') || (maxPriceVal !== '');
-      if (dot) dot.classList.toggle('hidden', !hasActive);
-    }
-
-    function clearAllFilters() {
-      document.getElementById('brandFilter').value = '';
-      document.getElementById('minDctoFilter').value = '';
-      document.getElementById('maxPriceFilter').value = '';
-      state.brand = '';
-      state.minDcto = '';
-      state.maxPrice = '';
-      updateActiveFiltersBadge();
-      performSearch();
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // API: Fetch Brands
-    // ─────────────────────────────────────────────────────────────
-    async function loadBrands() {
-      try {
-        const opParam = state.carrier !== 'TODAS' ? `operadora=${encodeURIComponent(state.carrier)}` : '';
-        const res = await fetch(`/api/brands?${opParam}`);
-        if (!res.ok) throw new Error('Error al obtener marcas');
-        const brands = await res.json();
-        state.brandsList = Array.isArray(brands) ? brands : [];
-
-        const select = document.getElementById('brandFilter');
-        const currentSelected = state.brand;
-        select.innerHTML = '<option value="">Todas las marcas</option>';
-
-        state.brandsList.forEach(brand => {
-          const opt = document.createElement('option');
-          opt.value = brand;
-          opt.textContent = brand;
-          if (brand === currentSelected) opt.selected = true;
-          select.appendChild(opt);
-        });
-      } catch (err) {
-        console.warn('loadBrands error:', err);
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // API: Fetch Stats
-    // ─────────────────────────────────────────────────────────────
-    async function fetchStats(notify = false) {
-      try {
-        const res = await fetch('/api/stats');
-        if (!res.ok) throw new Error('Error al cargar estadísticas');
-        const stats = await res.json();
-        state.stats = stats;
-
-        let totalTodos = 0;
-        const carriers = ['CLARO', 'WOM', 'ENTEL'];
-
-        carriers.forEach(c => {
-          const cData = stats[c] || { total: 0, marcas: 0, dcto_max: 0, precio_min: 0, precio_max: 0 };
-          totalTodos += (cData.total || 0);
-
-          // Tab badge count
-          const tabBadge = document.getElementById(`badgeCount${c}`);
-          if (tabBadge) tabBadge.textContent = `(${cData.total || 0})`;
-
-          // Stats view cards
-          const statTotal = document.getElementById(`stat${c}Total`);
-          const statBrands = document.getElementById(`stat${c}Brands`);
-          const statMaxDcto = document.getElementById(`stat${c}MaxDcto`);
-          const statPriceRange = document.getElementById(`stat${c}PriceRange`);
-
-          if (statTotal) statTotal.textContent = (cData.total || 0).toLocaleString('es-CL');
-          if (statBrands) statBrands.textContent = `${cData.marcas || 0} marcas`;
-          if (statMaxDcto) statMaxDcto.textContent = cData.dcto_max > 0 ? `-${formatCLP(cData.dcto_max)}` : '$0';
-          if (statPriceRange) statPriceRange.textContent = `${formatCLP(cData.precio_min)} - ${formatCLP(cData.precio_max)}`;
-        });
-
-        // TODAS Tab badge count
-        const todasBadge = document.getElementById('badgeCountTODAS');
-        if (todasBadge) todasBadge.textContent = `(${totalTodos})`;
-
-        if (notify) showToast('Estadísticas actualizadas con éxito', 'success');
-      } catch (err) {
-        console.warn('fetchStats error:', err);
-        if (notify) showToast('Error al actualizar estadísticas: ' + err.message, 'error');
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // API: Search Products
-    // ─────────────────────────────────────────────────────────────
-    async function performSearch() {
-      state.isLoading = true;
-      const loadingIndicator = document.getElementById('loadingIndicator');
-      const skeletonContainer = document.getElementById('skeletonContainer');
-      const emptyState = document.getElementById('emptyState');
-      const mobileCardList = document.getElementById('mobileCardList');
-      const desktopTableBody = document.getElementById('desktopTableBody');
-      const resultsCountBadge = document.getElementById('resultsCountBadge');
-
-      loadingIndicator.classList.remove('hidden');
-      loadingIndicator.classList.add('flex');
-
-      if (state.results.length === 0) {
-        skeletonContainer.classList.remove('hidden');
-        skeletonContainer.classList.add('flex');
-        emptyState.classList.add('hidden');
-      }
-
-      // Build Query String
-      const params = new URLSearchParams();
-      if (state.searchQuery.trim()) params.set('q', state.searchQuery.trim());
-      if (state.carrier && state.carrier !== 'TODAS') params.set('op', state.carrier);
-      
-      const brandVal = document.getElementById('brandFilter').value;
-      if (brandVal) params.set('marca', brandVal);
-
-      const minDctoVal = document.getElementById('minDctoFilter').value;
-      if (minDctoVal) params.set('min_dcto', minDctoVal);
-
-      const maxPriceVal = document.getElementById('maxPriceFilter').value;
-      if (maxPriceVal) params.set('max_precio', maxPriceVal);
-
-      try {
-        const res = await fetch(`/api/search?${params.toString()}`);
-        if (!res.ok) throw new Error('Error al consultar el catálogo');
-        const data = await res.json();
-        state.results = Array.isArray(data) ? data : [];
-
-        renderResults();
-      } catch (err) {
-        showToast('Error en la búsqueda: ' + err.message, 'error');
-        state.results = [];
-        renderResults();
-      } finally {
-        state.isLoading = false;
-        loadingIndicator.classList.add('hidden');
-        loadingIndicator.classList.remove('flex');
-        skeletonContainer.classList.add('hidden');
-        skeletonContainer.classList.remove('flex');
-
-        // Re-focus search input automatically (ideal for barcode scanning continuous flow)
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput && document.activeElement !== searchInput) {
-          searchInput.focus();
-        }
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Render Results (Mobile Cards + Desktop Table)
-    // ─────────────────────────────────────────────────────────────
-    function renderResults() {
-      const mobileCardList = document.getElementById('mobileCardList');
-      const desktopTableBody = document.getElementById('desktopTableBody');
-      const emptyState = document.getElementById('emptyState');
-      const resultsCountBadge = document.getElementById('resultsCountBadge');
-
-      const total = state.results.length;
-      resultsCountBadge.textContent = `${total.toLocaleString('es-CL')} ${total === 1 ? 'producto encontrado' : 'productos encontrados'}`;
-
-      if (total === 0) {
-        mobileCardList.innerHTML = '';
-        desktopTableBody.innerHTML = '';
-        emptyState.classList.remove('hidden');
-        return;
-      }
-
-      emptyState.classList.add('hidden');
-
-      // 1. Render Mobile Cards
-      let cardsHtml = '';
-      state.results.forEach((prod, idx) => {
-        const carrier = prod.operadora || 'CLARO';
-        let badgeColor = 'bg-rose-600';
-        if (carrier === 'WOM') badgeColor = 'bg-purple-600';
-        if (carrier === 'ENTEL') badgeColor = 'bg-orange-500';
-
-        cardsHtml += `
-          <div 
-            onclick="openBottomSheet(${idx})"
-            class="bg-[#1E293B] hover:bg-[#263548] border border-slate-700/80 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-md active:scale-[0.99] transition-all cursor-pointer">
-            
-            <!-- Top Row: Carrier badge + Brand badge -->
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-1.5">
-                <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded text-white ${badgeColor}">
-                  ${carrier}
-                </span>
-                <span class="text-xs font-bold text-slate-300 px-2 py-0.5 rounded bg-slate-800 border border-slate-700/60">
-                  ${escapeHtml(prod.marca || 'GENÉRICO')}
-                </span>
-              </div>
-              <span class="text-[11px] font-mono text-slate-400 font-semibold">
-                PLU: ${prod.plu_cod || '-'}
-              </span>
-            </div>
-
-            <!-- Description -->
-            <div class="text-sm font-bold text-slate-100 leading-snug line-clamp-2">
-              ${escapeHtml(prod.descripcion || 'Sin descripción')}
-            </div>
-
-            <!-- Divider -->
-            <div class="h-px bg-slate-800"></div>
-
-            <!-- Bottom Row: Discount + Final Price + Action -->
-            <div class="flex items-center justify-between">
-              <div>
-                <span class="text-[10px] uppercase font-bold text-slate-400 block">Descuento</span>
-                <span class="text-xl font-extrabold text-emerald-400 font-mono">
-                  ${prod.descuento > 0 ? `-${formatCLP(prod.descuento)}` : '$0'}
-                </span>
-              </div>
-
-              <div class="text-right">
-                <span class="text-[10px] uppercase font-bold text-slate-400 block">Precio Final</span>
-                <span class="text-base font-extrabold text-white font-mono">
-                  ${formatCLP(prod.precio_final)}
-                </span>
-              </div>
-
-              <div class="pl-2">
-                <span class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700">
-                  <span>Códigos</span>
-                  <span class="text-emerald-400">▶</span>
-                </span>
-              </div>
-            </div>
-
-          </div>
-        `;
-      });
-      mobileCardList.innerHTML = cardsHtml;
-
-      // 2. Render Desktop Table Rows
-      let tableHtml = '';
-      state.results.forEach((prod, idx) => {
-        const carrier = prod.operadora || 'CLARO';
-        let badgeColor = 'bg-rose-600';
-        if (carrier === 'WOM') badgeColor = 'bg-purple-600';
-        if (carrier === 'ENTEL') badgeColor = 'bg-orange-500';
-
-        const isSelected = state.selectedProduct && (state.selectedProduct.plu_cod === prod.plu_cod && state.selectedProduct.operadora === prod.operadora);
-        const rowBg = isSelected ? 'bg-slate-700/80 ring-2 ring-emerald-500 font-medium' : 'hover:bg-slate-800/80';
-
-        tableHtml += `
-          <tr 
-            onclick="selectDesktopProduct(${idx})"
-            class="transition-colors cursor-pointer ${rowBg}">
-            
-            <!-- Operadora -->
-            <td class="py-2.5 px-3 whitespace-nowrap">
-              <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded text-white ${badgeColor}">
-                ${carrier}
-              </span>
-            </td>
-
-            <!-- Marca -->
-            <td class="py-2.5 px-3 font-semibold text-slate-200 whitespace-nowrap">
-              ${escapeHtml(prod.marca || '-')}
-            </td>
-
-            <!-- Descripción -->
-            <td class="py-2.5 px-3 text-slate-100 font-medium max-w-xs truncate" title="${escapeHtml(prod.descripcion)}">
-              ${escapeHtml(prod.descripcion || '-')}
-            </td>
-
-            <!-- PLU -->
-            <td class="py-2.5 px-3 font-mono text-slate-300 whitespace-nowrap">
-              ${prod.plu_cod || '-'}
-            </td>
-
-            <!-- EAN-13 -->
-            <td class="py-2.5 px-3 font-mono text-emerald-400 font-semibold whitespace-nowrap">
-              ${prod.ean13 || prod.plu_cod || '-'}
-            </td>
-
-            <!-- Plan -->
-            <td class="py-2.5 px-3 font-mono text-slate-300 whitespace-nowrap">
-              ${prod.plan || '-'}
-            </td>
-
-            <!-- DCTO -->
-            <td class="py-2.5 px-3 text-right font-mono font-bold text-emerald-400 whitespace-nowrap">
-              ${prod.descuento > 0 ? `-${formatCLP(prod.descuento)}` : '$0'}
-            </td>
-
-            <!-- Precio -->
-            <td class="py-2.5 px-3 text-right font-mono text-slate-400 line-through whitespace-nowrap text-[11px]">
-              ${formatCLP(prod.precio)}
-            </td>
-
-            <!-- Precio Final -->
-            <td class="py-2.5 px-3 text-right font-mono font-extrabold text-white whitespace-nowrap text-sm">
-              ${formatCLP(prod.precio_final)}
-            </td>
-
-          </tr>
-        `;
-      });
-      desktopTableBody.innerHTML = tableHtml;
-
-      // If desktop has items and nothing selected, auto-select first item
-      if (window.innerWidth >= 1024 && !state.selectedProduct && state.results.length > 0) {
-        selectDesktopProduct(0);
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Bottom Sheet (Mobile View for Barcodes & Details)
-    // ─────────────────────────────────────────────────────────────
-    function openBottomSheet(index) {
-      const prod = state.results[index];
-      if (!prod) return;
-
-      state.selectedProduct = prod;
-
-      // Populate Elements
-      const carrier = prod.operadora || 'CLARO';
-      const cBadge = document.getElementById('sheetCarrierBadge');
-      let badgeBg = 'bg-rose-600';
-      if (carrier === 'WOM') badgeBg = 'bg-purple-600';
-      if (carrier === 'ENTEL') badgeBg = 'bg-orange-500';
-
-      cBadge.className = `text-xs font-black px-2.5 py-0.5 rounded-full text-white uppercase tracking-wider ${badgeBg}`;
-      cBadge.textContent = carrier;
-
-      document.getElementById('sheetBrandBadge').textContent = prod.marca || 'GENÉRICO';
-      
-      // Vigencia
-      if (prod.desde && prod.hasta) {
-        document.getElementById('sheetVigenciaBadge').textContent = `${formatDateShort(prod.desde)} → ${formatDateShort(prod.hasta)}`;
-      } else {
-        document.getElementById('sheetVigenciaBadge').textContent = 'Vigencia actual';
-      }
-
-      document.getElementById('sheetProductTitle').textContent = prod.descripcion || 'Sin descripción';
-      document.getElementById('sheetPluText').textContent = prod.plu_cod || '-';
-
-      // Discount & Prices
-      const dctoVal = prod.descuento > 0 ? `-${formatCLP(prod.descuento)}` : '$0';
-      document.getElementById('sheetDiscountBig').textContent = dctoVal;
-      document.getElementById('sheetOriginalPrice').textContent = formatCLP(prod.precio);
-      document.getElementById('sheetFinalPrice').textContent = formatCLP(prod.precio_final);
-      document.getElementById('btnCopyDiscountLabel').textContent = `Copiar Descuento (${prod.descuento || 0})`;
-
-      // BARCODES
-      // 1. EAN-13
-      const eanCode = prod.ean13 || prod.plu_cod || '';
-      document.getElementById('sheetEanNumber').textContent = eanCode || 'Sin código';
-      document.getElementById('sheetEanSourceBadge').textContent = prod.ean13_source || 'formula';
-      const eanImg = document.getElementById('sheetEanImg');
-      if (eanCode) {
-        eanImg.src = `/api/barcode-inline/${encodeURIComponent(eanCode)}`;
-        eanImg.classList.remove('hidden');
-      } else {
-        eanImg.classList.add('hidden');
-      }
-
-      // 2. Plan
-      document.getElementById('sheetPlanCarrierName').textContent = carrier;
-      const planCode = prod.plan_barcode || '';
-      document.getElementById('sheetPlanNumber').textContent = planCode || 'Sin código de plan';
-      const planImg = document.getElementById('sheetPlanImg');
-      if (planCode) {
-        planImg.src = `/api/barcode-inline/${encodeURIComponent(planCode)}`;
-        planImg.classList.remove('hidden');
-      } else {
-        planImg.classList.add('hidden');
-      }
-
-      // 3. PLU
-      const pluCode = prod.plu_cod || '';
-      document.getElementById('sheetPluNumber').textContent = pluCode || 'Sin PLU';
-      const pluImg = document.getElementById('sheetPluImg');
-      if (pluCode) {
-        pluImg.src = `/api/barcode-inline/${encodeURIComponent(pluCode)}`;
-        pluImg.classList.remove('hidden');
-      } else {
-        pluImg.classList.add('hidden');
-      }
-
-      // Show sheet & backdrop
-      const backdrop = document.getElementById('sheetBackdrop');
-      const sheet = document.getElementById('bottomSheet');
-
-      backdrop.classList.remove('hidden');
-      requestAnimationFrame(() => {
-        backdrop.classList.remove('opacity-0');
-        backdrop.classList.add('opacity-100');
-        sheet.classList.remove('translate-y-full');
-        sheet.classList.add('translate-y-0');
-      });
-
-      // Prevent background scrolling
-      document.body.style.overflow = 'hidden';
-    }
-
-    function closeBottomSheet() {
-      const backdrop = document.getElementById('sheetBackdrop');
-      const sheet = document.getElementById('bottomSheet');
-
-      sheet.classList.remove('translate-y-0');
-      sheet.classList.add('translate-y-full');
-      backdrop.classList.remove('opacity-100');
-      backdrop.classList.add('opacity-0');
-
-      setTimeout(() => {
-        backdrop.classList.add('hidden');
-        document.body.style.overflow = '';
-      }, 250);
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Desktop Detail Panel Selection
-    // ─────────────────────────────────────────────────────────────
-    function selectDesktopProduct(index) {
-      const prod = state.results[index];
-      if (!prod) return;
-
-      state.selectedProduct = prod;
-
-      const empty = document.getElementById('desktopDetailEmpty');
-      const content = document.getElementById('desktopDetailContent');
-      const inner = document.getElementById('desktopDetailInner');
-
-      empty.classList.add('hidden');
-      content.classList.remove('hidden');
-
-      const carrier = prod.operadora || 'CLARO';
-      let badgeBg = 'bg-rose-600';
-      if (carrier === 'WOM') badgeBg = 'bg-purple-600';
-      if (carrier === 'ENTEL') badgeBg = 'bg-orange-500';
-
-      const vigencia = (prod.desde && prod.hasta) ? `${formatDateShort(prod.desde)} → ${formatDateShort(prod.hasta)}` : 'Vigencia actual';
-      const eanCode = prod.ean13 || prod.plu_cod || '';
-      const planCode = prod.plan_barcode || '';
-      const pluCode = prod.plu_cod || '';
-
-      inner.innerHTML = `
-        <div class="flex items-center gap-2 flex-wrap mb-2">
-          <span class="text-xs font-black px-2.5 py-0.5 rounded-full text-white uppercase tracking-wider ${badgeBg}">${carrier}</span>
-          <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-200 border border-slate-700">${escapeHtml(prod.marca || 'GENÉRICO')}</span>
-          <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">${vigencia}</span>
-        </div>
-
-        <h3 class="text-lg font-black text-white leading-snug">${escapeHtml(prod.descripcion || 'Sin descripción')}</h3>
-        <div class="text-xs text-slate-400 mt-0.5 mb-3">PLU: <strong class="font-mono text-slate-200">${prod.plu_cod || '-'}</strong></div>
-
-        <!-- Discount & Prices -->
-        <div class="bg-[#263548] border border-slate-700/80 rounded-xl p-3.5 flex flex-col gap-2 mb-4">
-          <div class="flex items-baseline justify-between">
-            <span class="text-[11px] uppercase font-bold text-slate-400">Descuento Especial</span>
-            <span class="text-xs text-slate-400">Normal: <span class="line-through font-mono text-slate-400">${formatCLP(prod.precio)}</span></span>
-          </div>
-          <div class="flex items-baseline justify-between">
-            <div class="text-3xl font-black text-emerald-400 font-mono tracking-tight">${prod.descuento > 0 ? `-${formatCLP(prod.descuento)}` : '$0'}</div>
-            <div class="text-right">
-              <span class="text-[10px] uppercase font-bold text-slate-400 block">Precio Final</span>
-              <span class="text-2xl font-black text-white font-mono">${formatCLP(prod.precio_final)}</span>
-            </div>
-          </div>
-
-          <button 
-            type="button" 
-            onclick="copyToClipboard('${prod.descuento || 0}', 'Descuento copiado: ${prod.descuento || 0}')"
-            class="mt-1 w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all">
-            <span>📋</span>
-            <span>Copiar Descuento (${prod.descuento || 0})</span>
-          </button>
-        </div>
-
-        <!-- Barcodes -->
-        <div class="space-y-3">
-          
-          <!-- EAN-13 -->
-          <div class="bg-[#0F172A] border border-slate-700/80 rounded-xl p-3">
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs font-bold text-slate-200">Código Equipo (EAN-13)</span>
-                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">${prod.ean13_source || 'formula'}</span>
-              </div>
-              <button 
-                type="button" 
-                onclick="copyToClipboard('${eanCode}', 'EAN-13 copiado: ${eanCode}')"
-                class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-300 border border-slate-700 flex items-center gap-1">
-                <span>📋 Copiar</span>
-              </button>
-            </div>
-            <div class="bg-white rounded-lg p-2 flex items-center justify-center">
-              <img src="/api/barcode-inline/${encodeURIComponent(eanCode)}" alt="EAN-13" class="w-full max-h-20 object-contain barcode-img">
-            </div>
-            <div class="text-center font-mono text-base font-bold text-slate-100 mt-1">${eanCode}</div>
-          </div>
-
-          <!-- Plan -->
-          <div class="bg-[#0F172A] border border-slate-700/80 rounded-xl p-3">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-slate-200">Código Plan ${carrier}</span>
-              <button 
-                type="button" 
-                onclick="copyToClipboard('${planCode}', 'Plan copiado: ${planCode}')"
-                class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-300 border border-slate-700 flex items-center gap-1">
-                <span>📋 Copiar</span>
-              </button>
-            </div>
-            <div class="bg-white rounded-lg p-2 flex items-center justify-center">
-              <img src="/api/barcode-inline/${encodeURIComponent(planCode)}" alt="Plan" class="w-full max-h-20 object-contain barcode-img">
-            </div>
-            <div class="text-center font-mono text-base font-bold text-slate-100 mt-1">${planCode}</div>
-          </div>
-
-          <!-- PLU -->
-          <div class="bg-[#0F172A] border border-slate-700/80 rounded-xl p-3">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-slate-200">PLU Interno</span>
-              <button 
-                type="button" 
-                onclick="copyToClipboard('${pluCode}', 'PLU copiado: ${pluCode}')"
-                class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-300 border border-slate-700 flex items-center gap-1">
-                <span>📋 Copiar</span>
-              </button>
-            </div>
-            <div class="bg-white rounded-lg p-2 flex items-center justify-center">
-              <img src="/api/barcode-inline/${encodeURIComponent(pluCode)}" alt="PLU" class="w-full max-h-20 object-contain barcode-img">
-            </div>
-            <div class="text-center font-mono text-base font-bold text-slate-100 mt-1">${pluCode}</div>
-          </div>
-
-        </div>
-
-        <!-- Print Action -->
-        <button 
-          type="button" 
-          onclick="printCurrentSheetProduct()"
-          class="mt-4 w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-98 text-slate-200 hover:text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-slate-700 transition-all">
-          <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-          </svg>
-          <span>Imprimir códigos</span>
-        </button>
-      `;
-
-      // Update active highlight in desktop table
-      const rows = document.querySelectorAll('#desktopTableBody tr');
-      rows.forEach((r, i) => {
-        if (i === index) {
-          r.className = 'transition-colors cursor-pointer bg-slate-700/80 ring-2 ring-emerald-500 font-medium';
-        } else {
-          r.className = 'transition-colors cursor-pointer hover:bg-slate-800/80';
-        }
-      });
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Print Ticket Preparation & Execution
-    // ─────────────────────────────────────────────────────────────
-    function printCurrentSheetProduct() {
-      const prod = state.selectedProduct;
-      if (!prod) {
-        showToast('Selecciona un producto para imprimir', 'warning');
-        return;
-      }
-
-      const carrier = prod.operadora || 'CLARO';
-      const eanCode = prod.ean13 || prod.plu_cod || '';
-      const planCode = prod.plan_barcode || '';
-      const pluCode = prod.plu_cod || '';
-
-      document.getElementById('printCarrierBrand').textContent = `${carrier} • ${prod.marca || 'GENÉRICO'}`;
-      document.getElementById('printDescription').textContent = prod.descripcion || 'Sin descripción';
-      document.getElementById('printPlu').textContent = prod.plu_cod || '-';
-      
-      const vigenciaStr = (prod.desde && prod.hasta) ? `${formatDateShort(prod.desde)} al ${formatDateShort(prod.hasta)}` : 'Vigencia actual';
-      document.getElementById('printVigencia').textContent = `Vigencia: ${vigenciaStr}`;
-
-      document.getElementById('printDiscount').textContent = prod.descuento > 0 ? `-${formatCLP(prod.descuento)}` : '$0';
-      document.getElementById('printNormalPrice').textContent = formatCLP(prod.precio);
-      document.getElementById('printFinalPrice').textContent = formatCLP(prod.precio_final);
-
-      // Barcode Images
-      document.getElementById('printEanNumber').textContent = eanCode;
-      document.getElementById('printEanImg').src = `/api/barcode-inline/${encodeURIComponent(eanCode)}`;
-
-      document.getElementById('printCarrierPlan').textContent = carrier;
-      document.getElementById('printPlanNumber').textContent = planCode;
-      document.getElementById('printPlanImg').src = `/api/barcode-inline/${encodeURIComponent(planCode)}`;
-
-      document.getElementById('printPluNumber').textContent = pluCode;
-      document.getElementById('printPluBarcodeImg').src = `/api/barcode-inline/${encodeURIComponent(pluCode)}`;
-
-      document.getElementById('printTimestamp').textContent = new Date().toLocaleString('es-CL');
-
-      window.print();
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Hamburger Drawer
-    // ─────────────────────────────────────────────────────────────
-    function toggleDrawer(force) {
-      const backdrop = document.getElementById('drawerBackdrop');
-      const drawer = document.getElementById('drawerPanel');
-
-      const shouldOpen = force !== undefined ? force : drawer.classList.contains('translate-y-full');
-
-      if (shouldOpen) {
-        backdrop.classList.remove('hidden');
-        requestAnimationFrame(() => {
-          backdrop.classList.remove('opacity-0');
-          backdrop.classList.add('opacity-100');
-          drawer.classList.remove('translate-y-full');
-          drawer.classList.add('translate-y-0');
-        });
-      } else {
-        drawer.classList.remove('translate-y-0');
-        drawer.classList.add('translate-y-full');
-        backdrop.classList.remove('opacity-100');
-        backdrop.classList.add('opacity-0');
-        setTimeout(() => {
-          backdrop.classList.add('hidden');
-        }, 250);
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // File Upload Handlers (Excel & CSV)
-    // ─────────────────────────────────────────────────────────────
-    async function handleExcelUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const spinner = document.getElementById('excelLoadingSpinner');
-      const btn = document.getElementById('btnSelectExcel');
-      spinner.classList.remove('hidden');
-      spinner.classList.add('flex');
-      btn.disabled = true;
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const res = await fetch('/api/upload-excel', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const result = await res.json();
-        if (!res.ok || !result.ok) {
-          throw new Error(result.error || 'Fallo en la carga del Excel');
-        }
-
-        const filename = result.filename || file.name;
-        document.getElementById('excelStatusText').textContent = `${filename} — cargado ✓`;
-        showToast(`Excel cargado con éxito: ${filename}`, 'success');
-
-        // Refresh all app data
-        fetchStats();
-        loadBrands();
-        performSearch();
-      } catch (err) {
-        showToast('Error al cargar Excel: ' + err.message, 'error');
-        document.getElementById('excelStatusText').textContent = 'Error al procesar archivo';
-      } finally {
-        spinner.classList.add('hidden');
-        spinner.classList.remove('flex');
-        btn.disabled = false;
-        event.target.value = '';
-      }
-    }
-
-    async function handleCsvUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const spinner = document.getElementById('csvLoadingSpinner');
-      const btn = document.getElementById('btnSelectCsv');
-      spinner.classList.remove('hidden');
-      spinner.classList.add('flex');
-      btn.disabled = true;
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const res = await fetch('/api/upload-csv', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const result = await res.json();
-        if (!res.ok || !result.ok) {
-          throw new Error(result.error || 'Fallo en la carga del CSV');
-        }
-
-        const count = result.records || 0;
-        document.getElementById('csvStatusText').textContent = `${count.toLocaleString('es-CL')} códigos cargados ✓`;
-        showToast(`CSV de existencias cargado: ${count.toLocaleString('es-CL')} registros`, 'success');
-
-        // Re-execute search to refresh EAN-13s
-        performSearch();
-      } catch (err) {
-        showToast('Error al cargar CSV: ' + err.message, 'error');
-        document.getElementById('csvStatusText').textContent = 'Error al procesar CSV';
-      } finally {
-        spinner.classList.add('hidden');
-        spinner.classList.remove('flex');
-        btn.disabled = false;
-        event.target.value = '';
-      }
-    }
-
-    async function fetchCsvStatus() {
-      try {
-        const res = await fetch('/api/csv-status');
-        const data = await res.json();
-        const textEl = document.getElementById('csvStatusText');
-        if (data.ok && data.records > 0) {
-          textEl.textContent = `${Number(data.records).toLocaleString('es-CL')} códigos cargados ✓`;
-        } else {
-          textEl.textContent = 'Sin códigos de barra cargados (usando fórmula)';
-        }
-      } catch (e) {
-        console.warn('fetchCsvStatus error:', e);
-      }
-    }
-
-    async function fetchPingStatus() {
-      try {
-        const res = await fetch('/api/ping');
-        const data = await res.json();
-        if (data.ok) {
-          if (data.excel) {
-            const basename = data.excel.split(/[\\/]/).pop();
-            document.getElementById('excelStatusText').textContent = `${basename} — cargado ✓`;
-            // Also update header subtitle if possible
-            if (basename.includes('W45')) {
-              document.getElementById('headerSubtitle').textContent = 'W45 | 11-17 Nov';
-            }
-          }
-          if (data.version) {
-            document.getElementById('diagVersion').textContent = `v${data.version} PWA`;
-          }
-        }
-      } catch (e) {
-        console.warn('fetchPingStatus error:', e);
-      }
-    }
-
-    function clearBarcodeCache() {
-      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-        const messageChannel = new MessageChannel();
-        messageChannel.port1.onmessage = (event) => {
-          if (event.data?.ok) {
-            showToast('Caché de códigos de barra vaciada', 'success');
-          }
-        };
-        navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_BARCODE_CACHE' }, [messageChannel.port2]);
-      } else {
-        showToast('Caché restablecida', 'info');
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // PWA Install Prompt Capture
-    // ─────────────────────────────────────────────────────────────
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      const installContainer = document.getElementById('pwaInstallContainer');
-      if (installContainer) installContainer.classList.remove('hidden');
-    });
-
-    async function promptPwaInstall() {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const choiceResult = await deferredPrompt.userChoice;
-      if (choiceResult.outcome === 'accepted') {
-        showToast('¡Gracias por instalar RetailPOS Pro!', 'success');
-      }
-      deferredPrompt = null;
-      const installContainer = document.getElementById('pwaInstallContainer');
-      if (installContainer) installContainer.classList.add('hidden');
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Utility: HTML Escaping
-    // ─────────────────────────────────────────────────────────────
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Keyboard Hotkeys
-    // ─────────────────────────────────────────────────────────────
-    window.addEventListener('keydown', (e) => {
-      // Escape closes bottom sheet or drawer
-      if (e.key === 'Escape') {
-        closeBottomSheet();
-        toggleDrawer(false);
-      }
-      // F2 jumps to search input
-      if (e.key === 'F2') {
-        e.preventDefault();
-        switchMainView('search');
-        const input = document.getElementById('searchInput');
-        if (input) input.focus();
-      }
-    });
-
-    // ─────────────────────────────────────────────────────────────
-    // App Initialization
-    // ─────────────────────────────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', () => {
-      updateOnlineStatus();
-      initSearchControls();
-      updateCarrierTabStyles();
-      
-      // Parallel initial loads
-      fetchPingStatus();
-      fetchCsvStatus();
-      fetchStats();
-      loadBrands();
-      performSearch();
-
-      // Check Service Worker status for diagnostics
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(() => {
-          const swEl = document.getElementById('diagSwStatus');
-          if (swEl) swEl.textContent = 'Activo y Listo ✓';
-        }).catch(() => {
-          const swEl = document.getElementById('diagSwStatus');
-          if (swEl) swEl.textContent = 'Inactivo';
-        });
-      }
-    });
-  </script>
 </body>
 </html>
