@@ -116,6 +116,54 @@
     if (text) text.textContent = online ? 'En línea' : 'Sin conexión';
     if (dot) dot.classList.toggle('offline', !online);
     if (diag) diag.textContent = online ? 'En línea' : 'Sin conexión';
+    const bannerText = $('offlineBannerText');
+    if (bannerText) {
+      bannerText.textContent = !online && state.results.length
+        ? 'Sin conexión — mostrando datos guardados'
+        : 'Sin conexión';
+    }
+  }
+
+  function saveLastSearch() {
+    try {
+      localStorage.setItem('retailpos:lastSearch:v1', JSON.stringify({
+        query: state.query,
+        carrier: state.carrier,
+        results: state.results,
+        savedAt: Date.now(),
+      }));
+    } catch {
+      /* almacenamiento lleno o bloqueado */
+    }
+  }
+
+  function loadLastSearch() {
+    try {
+      const raw = localStorage.getItem('retailpos:lastSearch:v1');
+      if (!raw) return null;
+      const saved = JSON.parse(raw);
+      if (!saved || !Array.isArray(saved.results)) return null;
+      return saved;
+    } catch {
+      return null;
+    }
+  }
+
+  function restoreLastSearch() {
+    const saved = loadLastSearch();
+    if (!saved || !saved.results.length) return false;
+    state.query = saved.query || '';
+    if (carrierValues.includes(saved.carrier)) state.carrier = saved.carrier;
+    state.results = saved.results;
+    state.selected = null;
+    state.page = 1;
+    state.lastSearch = saved;
+    const input = $('searchInput');
+    if (input) input.value = state.query;
+    updateCarrierUI();
+    renderResults();
+    updateOnlineStatus();
+    return true;
   }
 
   function showToast(message, type = 'info') {
@@ -322,7 +370,7 @@
       return;
     }
     if (!navigator.onLine) {
-      showState('offlineState');
+      if (!restoreLastSearch()) showState('offlineState');
       return;
     }
 
@@ -343,16 +391,20 @@
       state.selected = null;
       state.hasData = true;
       state.lastSearch = { query: state.query, carrier: state.carrier, results: payload, savedAt: Date.now() };
+      saveLastSearch();
       renderResults();
       const input = $('searchInput');
       if (input) input.focus({ preventScroll: true });
     } catch (error) {
       if (error.offline) {
-        showState('offlineState');
+        if (!restoreLastSearch()) {
+          showState('offlineState');
+          state.results = [];
+        }
       } else {
         showState('errorState');
+        state.results = [];
       }
-      state.results = [];
     } finally {
       state.loading = false;
     }
@@ -945,8 +997,18 @@
     fetchCsvStatus();
     loadBrands();
     showState('initialState');
+    if (!navigator.onLine) {
+      if (!restoreLastSearch()) showState('offlineState');
+    }
     $('detailBack')?.addEventListener('click', closeDetail);
     $('btnPrintMobile')?.addEventListener('click', printCurrent);
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(() => renderConfig())
+          .catch(() => renderConfig());
+      });
+    }
   }
 
   window.RetailPOS = {

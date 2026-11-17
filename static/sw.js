@@ -1,63 +1,69 @@
-// RetailPOS Pro — Service Worker
-// Estrategia: Network first → Cache fallback para datos, Cache first para assets
+// RetailPOS Pro — Service Worker v3
+// Estrategia: network-first para HTML/API, cache-first para assets y barcodes.
 
-const CACHE_NAME = 'retailpos-v2';
-const BARCODE_CACHE = 'retailpos-barcodes-v2';
+const CACHE_NAME = 'retailpos-v3';
+const BARCODE_CACHE = 'retailpos-barcodes-v3';
 
 const APP_SHELL = [
   '/',
-  '/static/manifest.json',
+  '/static/app.css',
+  '/static/app.js',
+  '/manifest.json',
+  '/static/icons/icon-192.png',
+  '/static/icons/icon-512.png',
 ];
 
-// Instalar: pre-cachear shell
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
+// Instalar: pre-cachear el shell de la app.
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
   );
   self.skipWaiting();
 });
 
-// Activar: limpiar caches viejos
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then(keys =>
+// Activar: descartar versiones anteriores.
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
       Promise.all(
-        keys.filter(k => k !== CACHE_NAME && k !== BARCODE_CACHE)
-            .map(k => caches.delete(k))
+        keys
+          .filter((key) => key !== CACHE_NAME && key !== BARCODE_CACHE)
+          .map((key) => caches.delete(key))
       )
     )
   );
   self.clients.claim();
 });
 
-// Fetch: lógica de caché por tipo de recurso
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+
   const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return;
 
-  // Barcodes SVG: cache-first (cambian poco)
+  // Barcodes SVG: cambian poco, cache-first.
   if (url.pathname.startsWith('/api/barcode-inline/')) {
-    e.respondWith(cacheFirst(e.request, BARCODE_CACHE, 86400)); // 24h
+    e.respondWith(cacheFirst(e.request, BARCODE_CACHE));
     return;
   }
 
-  // Navegación (HTML): network-first para que las mejoras lleguen al instante.
-  // El caché queda solo como respaldo para uso offline.
+  // Navegación: red primero para entregar mejoras al instante.
   if (e.request.mode === 'navigate') {
-    e.respondWith(networkFirst(e.request, CACHE_NAME, 300));
+    e.respondWith(networkFirst(e.request, CACHE_NAME));
     return;
   }
 
-  // API de datos: network-first (datos frescos)
+  // API de datos: red primero; offline degrada a 503 JSON.
   if (url.pathname.startsWith('/api/')) {
-    e.respondWith(networkFirst(e.request, CACHE_NAME, 300)); // 5min fallback
+    e.respondWith(networkFirst(e.request, CACHE_NAME));
     return;
   }
 
-  // App shell / static: cache-first
+  // Assets estáticos: cache-first.
   e.respondWith(cacheFirst(e.request, CACHE_NAME));
 });
 
-async function networkFirst(request, cacheName, maxAgeSeconds) {
+async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
     if (response.ok) {
@@ -69,7 +75,8 @@ async function networkFirst(request, cacheName, maxAgeSeconds) {
     const cached = await caches.match(request);
     if (cached) return cached;
     return new Response(JSON.stringify({ error: 'Sin conexión', offline: true }), {
-      headers: { 'Content-Type': 'application/json' }
+      status: 503,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
     });
   }
 }
@@ -85,15 +92,17 @@ async function cacheFirst(request, cacheName) {
     }
     return response;
   } catch {
-    return new Response('Sin conexión', { status: 503 });
+    return new Response(JSON.stringify({ error: 'Sin conexión', offline: true }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    });
   }
 }
 
-// Mensaje desde la app para limpiar caché de barcodes
-self.addEventListener('message', (e) => {
-  if (e.data?.type === 'CLEAR_BARCODE_CACHE') {
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'CLEAR_BARCODE_CACHE') {
     caches.delete(BARCODE_CACHE).then(() => {
-      e.ports[0]?.postMessage({ ok: true });
+      event.ports[0]?.postMessage({ ok: true });
     });
   }
 });
