@@ -35,6 +35,12 @@ _state = {
     "csv_path": CSV_PATH_DEFAULT if os.path.exists(CSV_PATH_DEFAULT) else None,
 }
 
+def _basename(path):
+    return os.path.basename(path) if path else None
+
+_state["excel_name"] = _basename(_state["excel_path"])
+_state["csv_name"] = _basename(_state["csv_path"])
+
 # Pre-cargar Excel al inicio
 if _state["excel_path"]:
     dl.set_excel_path(_state["excel_path"])
@@ -67,6 +73,7 @@ def set_excel():
         return jsonify({"ok": False, "error": "Archivo no encontrado"}), 400
     dl.set_excel_path(path)
     _state["excel_path"] = path
+    _state["excel_name"] = _basename(path)
     return jsonify({"ok": True, "stats": dl.get_stats(path), "path": path})
 
 @app.route("/api/upload-excel", methods=["POST"])
@@ -84,7 +91,8 @@ def upload_excel():
         f.save(path)
         dl.set_excel_path(path)
         _state["excel_path"] = path
-        return jsonify({"ok": True, "stats": dl.get_stats(path), "filename": f.filename})
+        _state["excel_name"] = f.filename
+        return jsonify({"ok": True, "stats": dl.get_stats(path), "filename": f.filename, "excel_name": f.filename})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -92,8 +100,10 @@ def upload_excel():
 def stats():
     path = _state["excel_path"]
     if not path:
-        return jsonify({})
-    return jsonify(dl.get_stats(path))
+        return jsonify({"_rango": {}})
+    payload = dl.get_stats(path)
+    payload["_rango"] = dl.get_date_range(path)
+    return jsonify(payload)
 
 @app.route("/api/brands")
 def brands():
@@ -154,7 +164,8 @@ def upload_csv():
         f.save(path)
         count = bu.reload_csv(path)
         _state["csv_path"] = path
-        return jsonify({"ok": True, "records": count, "filename": f.filename})
+        _state["csv_name"] = f.filename
+        return jsonify({"ok": True, "records": count, "filename": f.filename, "csv_name": f.filename})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -178,13 +189,19 @@ def barcode_inline(code):
         clean = str(code).strip()
         if not clean:
             return Response("<svg/>", mimetype="image/svg+xml")
+        write_text = request.args.get("text", "1") != "0"
+        try:
+            quiet_zone = float(request.args.get("quiet_zone", 2.5))
+        except (TypeError, ValueError):
+            quiet_zone = 2.5
+        quiet_zone = max(1.0, min(10.0, quiet_zone))
         buf = io.BytesIO()
         code128 = bc.get("code128", clean, writer=SVGWriter())
         code128.write(buf, options={
             "module_height": 14.0, "module_width": 0.28,
-            "quiet_zone": 2.5, "font_size": 8,
+            "quiet_zone": quiet_zone, "font_size": 8,
             "text_distance": 2.5, "background": "white", "foreground": "black",
-            "write_text": True,
+            "write_text": write_text,
         })
         return Response(buf.getvalue(), mimetype="image/svg+xml")
     except Exception as e:
@@ -205,6 +222,8 @@ def ping():
         "ok": True,
         "excel": _state["excel_path"],
         "csv": _state["csv_path"],
+        "excel_name": _state.get("excel_name"),
+        "csv_name": _state.get("csv_name"),
         "version": "2.0"
     })
 

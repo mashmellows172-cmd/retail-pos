@@ -4,6 +4,7 @@ Carga y normaliza el Excel de planes de telefonía (CLARO / WOM / ENTEL)
 """
 import pandas as pd
 import os
+import math
 import hashlib
 import json
 from datetime import datetime
@@ -190,6 +191,31 @@ def get_brands(operadora: str = None, path: str = None) -> list:
         if op in all_data:
             brands.update(all_data[op]["marca"].dropna().unique().tolist())
     return sorted(brands)
+
+
+def business_week(d) -> int:
+    """Semana comercial del archivo: la semana 1 empieza el 1 de enero.
+
+    El Excel rotula como W45 el rango 11–17 nov, que con ISO sería W46.
+    """
+    return math.ceil(d.timetuple().tm_yday / 7)
+
+
+def get_date_range(path: str = None) -> dict:
+    """Rango de vigencia del catálogo cargado, derivado de DESDE/HASTA."""
+    all_data = load_all(path)
+    desde_vals = []
+    hasta_vals = []
+    for df in all_data.values():
+        if "desde" in df.columns:
+            desde_vals.extend(df["desde"].dropna().tolist())
+        if "hasta" in df.columns:
+            hasta_vals.extend(df["hasta"].dropna().tolist())
+    if not desde_vals or not hasta_vals:
+        return {}
+    desde = min(desde_vals).date()
+    hasta = max(hasta_vals).date()
+    return {"desde": desde.isoformat(), "hasta": hasta.isoformat(), "semana": business_week(desde)}
 
 
 def get_stats(path: str = None) -> dict:
