@@ -51,3 +51,10 @@ def test_nombres_largos_no_desbordan():
     assert "text-overflow: ellipsis" in css
     assert "min-width: 0" in css
     assert "overflow-wrap: anywhere" in css
+
+
+def test_los_clics_internos_no_reenvian_la_vista():
+    """Solo los botones navegan; las secciones no deben capturar el burbujeo."""
+    js = _js()
+    assert "document.querySelectorAll('button[data-view]')" in js
+    assert "document.querySelectorAll('[data-view]')" not in js

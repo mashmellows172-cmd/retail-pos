@@ -25,6 +25,8 @@
     range: null,
     excelName: null,
     csvName: null,
+    version: null,
+    installPrompt: null,
     lastSearch: null,
   };
 
@@ -256,6 +258,7 @@
       state.hasData = Boolean(data.excel);
       state.excelName = data.excel_name || null;
       state.csvName = data.csv_name || null;
+      state.version = data.version || null;
       if (!state.hasData) {
         showState('noData');
         renderWeek(null);
@@ -271,12 +274,18 @@
       const res = await fetch('/api/stats');
       if (!res.ok) throw new Error('stats');
       const data = await res.json();
-      state.stats = data || {};
-      renderWeek(data?._rango || null);
+      const stats = data || {};
+      state.stats = stats;
+      renderWeek(stats._rango || null);
       updateCounts();
       if (state.view === 'stats') renderStats();
     } catch {
       if (state.range === null) renderWeek(null);
+      const grid = $('statsGrid');
+      if (grid && state.view === 'stats') {
+        grid.innerHTML = '<div class="stat-card group"><div class="stat-name">No pudimos cargar las estadísticas</div><p class="row-sub">Revisa la conexión e inténtalo otra vez.</p><button id="btnStatsRetry" class="button secondary block" type="button">Reintentar</button></div>';
+        $('btnStatsRetry')?.addEventListener('click', fetchStats);
+      }
     }
   }
 
@@ -547,7 +556,7 @@
   }
 
   function bindShell() {
-    document.querySelectorAll('[data-view]').forEach((button) => {
+    document.querySelectorAll('button[data-view]').forEach((button) => {
       button.addEventListener('click', () => setView(button.dataset.view));
     });
     document.querySelectorAll('[data-goto]').forEach((button) => {
@@ -555,6 +564,12 @@
     });
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      state.installPrompt = event;
+      const container = $('pwaInstallContainer');
+      if (container) container.hidden = false;
+    });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
         closeFilters(false);
@@ -748,7 +763,111 @@
   }
 
   function renderStats() {
-    /* Task 5 */
+    const grid = $('statsGrid');
+    if (!grid) return;
+    const stats = state.stats || {};
+    const range = stats._rango || state.range || null;
+    const ops = Object.entries(stats).filter(([key]) => !key.startsWith('_'));
+    if (!ops.length) {
+      grid.innerHTML = `
+        <div class="stat-card group">
+          <div class="stat-name">Sin datos cargados</div>
+          <p class="row-sub">Sube el Excel semanal para ver el resumen por operadora.</p>
+          <button class="button secondary block" type="button" data-goto="config">Ir a Configuración</button>
+        </div>`;
+      grid.querySelectorAll('[data-goto]').forEach((button) => {
+        button.addEventListener('click', () => setView(button.dataset.goto));
+      });
+      return;
+    }
+    grid.innerHTML = ops.map(([op, data]) => {
+      const total = Number(data?.total || 0).toLocaleString('es-CL');
+      const marcas = Number(data?.marcas || 0);
+      const maxDcto = formatDiscount(data?.dcto_max);
+      const min = formatCLP(data?.precio_min);
+      const max = formatCLP(data?.precio_max);
+      const week = range && range.semana ? `Semana ${range.semana}` : 'Sin semana';
+      const vigencia = range && range.desde && range.hasta ? formatRange(range.desde, range.hasta) : '';
+      return `<article class="stat-card group">
+        <div class="stat-top">
+          <span class="stat-drop carrier-${escapeHtml(op)}" aria-hidden="true"></span>
+          <span class="stat-name">${escapeHtml(op)}</span>
+          <span class="stat-brands">${marcas} ${marcas === 1 ? 'marca' : 'marcas'}</span>
+        </div>
+        <div class="stat-total">${total}</div>
+        <div class="stat-label">productos vigentes</div>
+        <div class="stat-row"><span>Máx. descuento</span><span class="result-discount">${maxDcto}</span></div>
+        <div class="stat-row"><span>Rango de precios</span><span class="mono">${min} – ${max}</span></div>
+        <div class="stat-row"><span>Vigencia</span><span>${escapeHtml(week)}${vigencia ? ` · ${escapeHtml(vigencia)}` : ''}</span></div>
+        <div class="stat-link"><button class="text-button" type="button" data-stats-op="${escapeHtml(op)}">Ver productos</button></div>
+      </article>`;
+    }).join('');
+    grid.querySelectorAll('[data-stats-op]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.forceAll = true;
+        setView('search');
+        setCarrier(button.dataset.statsOp);
+      });
+    });
+  }
+
+  function setUploadState(kind, busy, message) {
+    const spinner = $(kind === 'excel' ? 'excelLoadingSpinner' : 'csvLoadingSpinner');
+    const button = $(kind === 'excel' ? 'btnSelectExcel' : 'btnSelectCsv');
+    if (spinner) {
+      spinner.hidden = !busy;
+      if (busy) spinner.lastChild.textContent = message || 'Procesando…';
+    }
+    if (button) button.disabled = busy;
+  }
+
+  async function uploadExcel(file) {
+    if (!file) return;
+    setUploadState('excel', true, 'Procesando Excel…');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/upload-excel', { method: 'POST', body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo procesar el Excel');
+      state.excelName = data.excel_name || file.name;
+      state.hasData = true;
+      showToast('Excel actualizado', 'success');
+      await fetchPing();
+      await fetchStats();
+      await loadBrands();
+      performSearch();
+      setView('search');
+    } catch (error) {
+      showToast(error.message || 'No se pudo procesar el Excel', 'error');
+    } finally {
+      setUploadState('excel', false);
+      const input = $('excelFileInput');
+      if (input) input.value = '';
+    }
+  }
+
+  async function uploadCsv(file) {
+    if (!file) return;
+    setUploadState('csv', true, 'Procesando CSV…');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/upload-csv', { method: 'POST', body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo procesar el CSV');
+      state.csvName = data.csv_name || file.name;
+      showToast(`${Number(data.records || 0).toLocaleString('es-CL')} códigos cargados`, 'success');
+      await fetchPing();
+      await fetchCsvStatus();
+      performSearch();
+    } catch (error) {
+      showToast(error.message || 'No se pudo procesar el CSV', 'error');
+    } finally {
+      setUploadState('csv', false);
+      const input = $('csvFileInput');
+      if (input) input.value = '';
+    }
   }
 
   function renderConfig() {
@@ -756,6 +875,51 @@
     const csv = $('configCsvName');
     if (excel) excel.textContent = state.excelName || 'Sin archivo';
     if (csv) csv.textContent = state.csvName || 'Sin archivo';
+    const version = $('diagVersion');
+    if (version && state.version) version.textContent = `v${state.version}`;
+    const sw = $('diagSwStatus');
+    if (sw) {
+      if (!('serviceWorker' in navigator)) sw.textContent = 'No soportado';
+      else if (navigator.serviceWorker.controller) sw.textContent = 'Activo';
+      else sw.textContent = 'Sin registrar';
+    }
+  }
+
+  function bindConfig() {
+    $('btnSelectExcel')?.addEventListener('click', () => $('excelFileInput')?.click());
+    $('btnSelectCsv')?.addEventListener('click', () => $('csvFileInput')?.click());
+    $('excelFileInput')?.addEventListener('change', (event) => uploadExcel(event.target.files?.[0]));
+    $('csvFileInput')?.addEventListener('change', (event) => uploadCsv(event.target.files?.[0]));
+    $('btnReloadApp')?.addEventListener('click', () => location.reload());
+    $('btnClearCache')?.addEventListener('click', async () => {
+      try {
+        if (window.caches) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((key) => caches.delete(key)));
+        }
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((reg) => reg.unregister()));
+        }
+        showToast('Caché limpiada, recargando…', 'success');
+        window.setTimeout(() => location.reload(), 600);
+      } catch {
+        showToast('No se pudo limpiar la caché', 'error');
+      }
+    });
+    $('btnInstallPwa')?.addEventListener('click', async () => {
+      const prompt = state.installPrompt;
+      if (!prompt) {
+        showToast('Usa el menú del navegador para instalar', 'info');
+        return;
+      }
+      prompt.prompt();
+      const choice = await prompt.userChoice;
+      state.installPrompt = null;
+      const container = $('pwaInstallContainer');
+      if (container) container.hidden = true;
+      showToast(choice.outcome === 'accepted' ? 'Instalando…' : 'Instalación cancelada', 'info');
+    });
   }
 
   function init() {
@@ -766,6 +930,7 @@
     bindCarriers();
     bindFilters();
     bindResults();
+    bindConfig();
     applyUrlCarrier();
     updateCarrierUI();
     updateOnlineStatus();
