@@ -32,6 +32,9 @@ Thumbs.db
 # Vercel
 .vercel/
 
+# Artefactos internos de ejecución de planes
+.superpowers/
+
 # Variables de entorno locales
 .env
 .env.local

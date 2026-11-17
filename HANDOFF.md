@@ -24,11 +24,12 @@
    - Normalización de datos, cálculo de precio final con descuento protegido contra negativos y optimización de búsqueda textual/numérica.
    - Mapeo de columnas del Excel: **D (`COD BARRA`)** → `plan_barcode`, el código que se pistolea para el descuento del plan de portabilidad; **E (`PLAN`)** → `plan`, solo código interno (no es un código de barras).
 
-4. **Frontend PWA Mobile-First (`templates/index.html`, `static/manifest.json`, `static/sw.js`)**:
-   - Interfaz con selector táctil por compañías y tarjetas para celulares.
-   - Bottom Sheet deslizable que despliega los códigos de barra SVG nítidos (Equipo, Plan de Portabilidad desde la columna D, PLU) listos para pistolear desde pantalla.
-   - Botón directo para copiar monto de descuento limpio.
-   - Capacidad offline completa y opción para instalar en el móvil como app nativa.
+4. **Frontend PWA estilo iOS (`templates/index.html`, `static/app.css`, `static/app.js`, `static/sw.js`)**:
+   - Shell semántico propio, sin Tailwind CDN ni Google Fonts: sistema visual iOS (canvas `#F2F2F7`, grupos blancos, segmented control, tab bar, safe-area).
+   - Búsqueda directa con debounce, segmented por operadora, filtros en bottom sheet (móvil) o inline (escritorio), paginación de 40/50 y tabla + panel de detalle en desktop.
+   - Detalle con orden **Equipo → Plan**, barcodes SVG sin texto embebido (`?text=0&quiet_zone=4`), copiado al portapapeles y voucher imprimible.
+   - Stats por operadora y Configuración con carga de Excel/CSV, diagnóstico de caché e instalación PWA.
+   - Offline: shell precacheado + última búsqueda exitosa en `localStorage['retailpos:lastSearch:v1']`.
 
 5. **`vercel.json` y `requirements.txt`**:
    - Configuración Serverless Python para despliegues continuos tras cada `git push`.
@@ -48,8 +49,9 @@
 
 ## 3. Estado Actual
 
-- El árbol de trabajo local y remoto está **100% limpio y sincronizado (`Everything up-to-date`)**.
+- El árbol de trabajo local y remoto está **sincronizado en `main`**.
 - Los endpoints y la carga de archivos en Vercel están totalmente probados y respondiendo `200 OK`.
+- **Importante:** el filesystem de Vercel es efímero. Después de cada despliegue hay que volver a subir el Excel semanal y el CSV desde **Configuración**; hasta entonces la app muestra "No hay precios cargados".
 - Cualquier otro agente puede clonar directamente o continuar editando desde el repositorio `mashmellows172-cmd/retail-pos`.
 
 ---
@@ -62,4 +64,16 @@
 
 **Regresión cubierta:** `tests/test_plan_barcode.py` valida el mapeo D/E en las tres hojas y que la UI no vuelva a usar `prod.plan` como código de barras. Ejecutar con `python -m pytest -q`.
 
-**PWA:** se subió la versión de caché a `retailpos-v2` y las navegaciones ahora usan network-first, para que la corrección no quede oculta por el HTML cacheado en dispositivos con la app instalada.
+**PWA:** el caché actual es **`retailpos-v3`** (barcodes en `retailpos-barcodes-v3`). Las navegaciones y la API usan network-first; los assets, cache-first. Si se cambian `app.css`/`app.js`, hay que subir el nombre del caché para que los equipos con la PWA instalada reciban la versión nueva.
+
+---
+
+## 5. Rediseño de mostrador (iOS) — noviembre 2026
+
+- **Diseño aprobado:** `docs/superpowers/specs/2026-11-16-rediseno-mostrador-design.md`; mockup en `docs/superpowers/specs/mockups/retailpos-mostrador.html`.
+- **Plan de ejecución:** `docs/superpowers/plans/2026-11-16-rediseno-mostrador-ios.md`; ledger en `.superpowers/sdd/2026-11-16-rediseno-mostrador-ios/progress.md`.
+- **Endpoints aditivos:** `/api/stats` devuelve `_rango` (`desde`, `hasta`, `semana`), `/api/ping` devuelve `excel_name`/`csv_name`, `/api/barcode-inline` acepta `?text=0&quiet_zone=4`.
+- **Semana derivada:** `data_loader.business_week()` usa `ceil(día_del_año / 7)` para calzar con el rótulo W45 del archivo (11–17 nov = semana 45).
+- **Iconos:** generar con `python tools/make_icons.py` (Pillow) si cambia la marca.
+- **Pruebas:** `python -m pytest -q` (32 tests). Cobertura de contratos API, shell, búsqueda, detalle/impresión, stats/config, PWA e iconos.
+- **Verificación manual:** Lighthouse 100/100/100 (accesibilidad, buenas prácticas, SEO), sin overflow horizontal de 360 a 1440 px, controles ≥ 44 px, offline restaura la última búsqueda.

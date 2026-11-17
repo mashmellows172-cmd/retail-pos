@@ -459,7 +459,7 @@
       const brand = escapeHtml(product.marca || 'GENÉRICO');
       const description = escapeHtml(product.descripcion || 'Sin descripción');
       const plu = escapeHtml(product.plu_cod || '');
-      return `<button class="result-row" type="button" data-index="${index}" aria-label="${description}, ${carrier}, descuento ${formatDiscount(product.descuento)}, precio final ${formatCLP(product.precio_final)}">
+      return `<button class="result-row" type="button" data-index="${index}">
         <span class="result-main">
           <span class="result-meta"><span class="carrier-pill carrier-${carrier}">${carrier}</span><span class="brand-text">${brand}</span></span>
           <span class="result-name">${description}</span>

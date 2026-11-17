@@ -5,7 +5,7 @@
   --surface-muted-strong: rgba(118, 118, 128, 0.20);
   --ink: #1C1C1E;
   --ink-secondary: #3A3A3C;
-  --muted: #6C6C70;
+  --muted: #545458;
   --separator: rgba(60, 60, 67, 0.29);
   --separator-soft: rgba(60, 60, 67, 0.16);
   --tint: #0066CC;
@@ -64,6 +64,7 @@ img { max-width: 100%; }
   position: absolute; left: 12px; top: -60px;
   z-index: 200; background: var(--surface); color: var(--tint);
   padding: 10px 14px; border-radius: 8px; font-weight: 700;
+  min-height: 44px; display: inline-flex; align-items: center;
 }
 .skip-link:focus { top: 10px; }
 
@@ -527,7 +528,7 @@ img { max-width: 100%; }
   .brand-sub { max-width: 140px; }
   .app-main { padding-left: 12px; padding-right: 12px; }
   .filter-button span:not(.filter-count) { display: none; }
-  .filter-button { padding: 0 10px; }
+  .filter-button { padding: 0 10px; min-width: 44px; justify-content: center; }
   .seg-label { font-size: 10px; }
   .result-name { font-size: 15px; }
   .discount-big { font-size: 25px; }
