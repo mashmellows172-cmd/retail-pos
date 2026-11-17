@@ -35,9 +35,13 @@ def test_el_ean_se_conserva_como_texto():
 
 def test_dialogo_movil_es_accesible():
     html = _html()
+    js = _js()
     assert 'id="detailDialog"' in html
     assert 'role="dialog"' in html and 'aria-modal="true"' in html and "aria-labelledby" in html
-    assert 'aria-label="Cerrar"' in html
+    # El nombre accesible coincide con el texto visible ("Volver").
+    assert 'aria-label="Volver"' in html
+    assert "setBackgroundInert(true)" in js
+    assert "setBackgroundInert(false)" in js
 
 
 def test_impresion_conserva_ids_y_usa_plan_barcode():
@@ -64,3 +68,7 @@ def test_impresion_conserva_ids_y_usa_plan_barcode():
         assert f'id="{element_id}"' in html
     assert "document.getElementById('printPlanNumber').textContent = planCode" in js
     assert "printCurrent" in js
+    # Si el producto no trae un código, la imagen anterior no debe quedar en el voucher.
+    assert "img.removeAttribute('src')" in js
+    assert "setBlock('printPlanBlock', Boolean(planCode))" in js
+    assert 'id="printPlanBlock"' in html

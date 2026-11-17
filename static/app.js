@@ -166,6 +166,37 @@
     return true;
   }
 
+  function restoreLastSearchForCurrentQuery() {
+    const saved = loadLastSearch();
+    if (!saved) return false;
+    const sameQuery = String(saved.query || '').trim() === state.query.trim();
+    const sameCarrier = String(saved.carrier || 'TODAS') === state.carrier;
+    if (!sameQuery || !sameCarrier) return false;
+    return restoreLastSearch();
+  }
+
+  function setBackgroundInert(value) {
+    document.querySelectorAll('header, .tabbar').forEach((el) => {
+      el.inert = value;
+    });
+  }
+
+  function trapFocus(container, event) {
+    if (event.key !== 'Tab') return;
+    const focusables = Array.from(container.querySelectorAll('button, input, select, a[href], [tabindex]:not([tabindex="-1"])'))
+      .filter((el) => !el.disabled && el.getBoundingClientRect().width > 0);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   function showToast(message, type = 'info') {
     const container = $('toastContainer');
     if (!container) return;
@@ -212,8 +243,15 @@
 
   function setCarrier(op, options = {}) {
     if (!carrierValues.includes(op)) return;
+    const changed = state.carrier !== op;
     state.carrier = op;
     state.page = 1;
+    if (changed) {
+      state.brand = '';
+      const select = $('brandFilter');
+      if (select) select.value = '';
+      updateFilterIndicators();
+    }
     updateCarrierUI();
     loadBrands();
     if (options.search !== false) performSearch();
@@ -224,7 +262,9 @@
     if (carrierValues.includes(op) && op !== 'TODAS') {
       state.carrier = op;
       updateCarrierUI();
+      return true;
     }
+    return false;
   }
 
   function updateFilterIndicators() {
@@ -302,13 +342,15 @@
   async function fetchPing() {
     try {
       const res = await fetch('/api/ping');
+      if (!res.ok) throw new Error('ping');
       const data = await res.json();
+      if (data.offline) throw new Error('offline');
       state.hasData = Boolean(data.excel);
       state.excelName = data.excel_name || null;
       state.csvName = data.csv_name || null;
       state.version = data.version || null;
       if (!state.hasData) {
-        showState('noData');
+        if (!state.results.length) showState('noData');
         renderWeek(null);
       }
       renderConfig();
@@ -360,17 +402,26 @@
     return params;
   }
 
+  let searchSeq = 0;
+
   async function performSearch(resetPage = true) {
     if (state.view !== 'search') return;
-    if (!state.query && !state.brand && !state.minDcto && !state.maxPrice && !state.forceAll) {
+    if (!state.query.trim() && !state.brand && !state.minDcto && !state.maxPrice && !state.forceAll) {
       state.results = [];
       state.page = 1;
       updateCountsLabel(0, 0, true);
       showState('initialState');
       return;
     }
+    const seq = ++searchSeq;
     if (!navigator.onLine) {
-      if (!restoreLastSearch()) showState('offlineState');
+      if (!restoreLastSearchForCurrentQuery()) {
+        state.results = [];
+        state.selected = null;
+        state.page = 1;
+        updateCountsLabel(0, 0, true);
+        showState('offlineState');
+      }
       return;
     }
 
@@ -379,6 +430,7 @@
     const params = buildSearchParams();
     try {
       const res = await fetch(`/api/search${params.toString() ? `?${params}` : ''}`);
+      if (seq !== searchSeq) return;
       const payload = await res.json().catch(() => null);
       if (res.status === 503 || payload?.offline) {
         const error = new Error('Sin conexión');
@@ -396,17 +448,21 @@
       const input = $('searchInput');
       if (input) input.focus({ preventScroll: true });
     } catch (error) {
+      if (seq !== searchSeq) return;
       if (error.offline) {
-        if (!restoreLastSearch()) {
-          showState('offlineState');
+        if (!restoreLastSearchForCurrentQuery()) {
           state.results = [];
+          state.selected = null;
+          state.page = 1;
+          updateCountsLabel(0, 0, true);
+          showState('offlineState');
         }
       } else {
         showState('errorState');
         state.results = [];
       }
     } finally {
-      state.loading = false;
+      if (seq === searchSeq) state.loading = false;
     }
   }
 
@@ -528,6 +584,7 @@
     if (!input) return;
     input.addEventListener('input', () => {
       state.query = input.value;
+      state.forceAll = false;
       const clear = $('btnClearSearch');
       if (clear) clear.hidden = !input.value;
       if (searchTimer) window.clearTimeout(searchTimer);
@@ -547,6 +604,11 @@
       input.focus();
     });
     $('btnForceAll')?.addEventListener('click', () => {
+      const field = $('searchInput');
+      if (field) field.value = '';
+      state.query = '';
+      const clearBtn = $('btnClearSearch');
+      if (clearBtn) clearBtn.hidden = true;
       state.forceAll = true;
       state.page = 1;
       performSearch();
@@ -624,10 +686,11 @@
     });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
-        closeFilters(false);
+        closeFilters();
         closeDetail();
       }
     });
+    $('filterSheet')?.addEventListener('keydown', (event) => trapFocus($('filterSheet'), event));
 
     desktopQuery = window.matchMedia('(min-width: 1024px)');
     const applyLayout = (matches) => {
@@ -666,6 +729,7 @@
     document.body.style.overflow = 'hidden';
     const main = document.querySelector('main');
     if (main) main.inert = true;
+    setBackgroundInert(true);
     renderDetail($('detailBody'), product);
     $('detailBack')?.focus();
   }
@@ -677,6 +741,7 @@
     document.body.style.overflow = '';
     const main = document.querySelector('main');
     if (main) main.inert = false;
+    setBackgroundInert(false);
     if (state.lastFocus && typeof state.lastFocus.focus === 'function') state.lastFocus.focus();
   }
 
@@ -693,6 +758,11 @@
     if (carrierLabel && isDialog) carrierLabel.textContent = `${prod.operadora || ''} · ${prod.marca || ''}`;
     const equipCode = String(prod.ean13 || prod.plu_cod || '');
     const planCode = prod.plan_barcode || '';
+    const isEan = prod.ean13_source !== 'plu_raw' && prod.ean13_source !== 'invalid';
+    const equipKind = isEan ? 'EAN-13' : 'PLU';
+    const equipOrigin = prod.ean13_source === 'csv'
+      ? 'CSV'
+      : (isEan ? 'Calculado' : 'PLU sin EAN-13');
     const planImg = planCode
       ? `<img src="${barcodeUrl(planCode)}" alt="Código de barras del plan ${escapeHtml(prod.operadora || '')}" loading="lazy" decoding="async">`
       : '';
@@ -711,7 +781,7 @@
       </div>
       <div class="section-title">Códigos para escanear</div>
       <section class="code-card group">
-        <div class="code-head"><div class="code-label"><span class="step-chip">1</span>Código del equipo</div><span class="code-kind">EAN-13</span></div>
+        <div class="code-head"><div class="code-label"><span class="step-chip">1</span>Código del equipo</div><span class="code-kind">${equipKind}</span></div>
         <div class="barcode-box">${equipImg}</div>
         <div class="code-foot"><button class="code-number" type="button" data-copy="${escapeHtml(equipCode)}" data-label="Código del equipo">${escapeHtml(equipCode || 'Sin código')}</button><button class="text-button code-copy" type="button" data-copy="${escapeHtml(equipCode)}" data-label="Código del equipo">Copiar</button></div>
       </section>
@@ -724,7 +794,7 @@
         <summary><span>Más detalles</span><svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
         <div class="details-body">
           <div class="detail-line"><span>PLU</span><b>${escapeHtml(prod.plu_cod || '')}</b></div>
-          <div class="detail-line"><span>Origen EAN</span><b>${prod.ean13_source === 'csv' ? 'CSV' : (prod.ean13 ? 'Calculado' : 'Sin código')}</b></div>
+          <div class="detail-line"><span>Origen EAN</span><b>${equipOrigin}</b></div>
           <div class="detail-line"><span>Vigencia</span><b>${escapeHtml(formatRange(prod.desde, prod.hasta))}</b></div>
           <div class="detail-line"><span>Precio normal</span><b>${formatCLP(prod.precio)}</b></div>
         </div>
@@ -738,22 +808,30 @@
 
   function setImageSource(img, src) {
     return new Promise((resolve) => {
-      if (!img || !src) {
-        resolve();
+      if (!img) {
+        resolve(false);
+        return;
+      }
+      img.onload = null;
+      img.onerror = null;
+      img.removeAttribute('src');
+      if (!src) {
+        resolve(false);
         return;
       }
       let settled = false;
-      const done = () => {
+      const done = (ok) => {
         if (settled) return;
         settled = true;
         img.onload = null;
         img.onerror = null;
-        resolve();
+        if (!ok) img.removeAttribute('src');
+        resolve(ok);
       };
-      img.onload = done;
-      img.onerror = done;
+      img.onload = () => done(true);
+      img.onerror = () => done(false);
       img.src = src;
-      window.setTimeout(done, 1500);
+      window.setTimeout(() => done(img.complete && img.naturalWidth > 0), 1500);
     });
   }
 
@@ -782,11 +860,21 @@
     setText('printPluNumber', pluCode);
     document.getElementById('printPlanNumber').textContent = planCode;
     setText('printTimestamp', new Date().toLocaleString('es-CL'));
-    await Promise.all([
+    const setBlock = (id, visible) => {
+      const block = $(id);
+      if (block) block.hidden = !visible;
+    };
+    setBlock('printEanBlock', Boolean(equipCode));
+    setBlock('printPlanBlock', Boolean(planCode));
+    setBlock('printPluBlock', Boolean(pluCode));
+    const [eanOk, planOk, pluOk] = await Promise.all([
       setImageSource($('printEanImg'), equipCode ? barcodeUrl(equipCode) : ''),
       setImageSource($('printPlanImg'), planCode ? barcodeUrl(planCode) : ''),
       setImageSource($('printPluBarcodeImg'), pluCode ? barcodeUrl(pluCode) : ''),
     ]);
+    if ((equipCode && !eanOk) || (planCode && !planOk) || (pluCode && !pluOk)) {
+      showToast('Algún código de barras no se pudo generar', 'error');
+    }
     window.print();
   }
 
@@ -796,21 +884,49 @@
     });
   }
 
+  function legacyCopy(text) {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(area);
+    area.select();
+    area.setSelectionRange(0, text.length);
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch {
+      ok = false;
+    }
+    area.remove();
+    return ok;
+  }
+
   async function copyCode(text, label, button) {
     if (!text) return;
+    let copied = false;
     try {
-      await navigator.clipboard.writeText(text);
-      showToast(`${label} copiado`, 'success');
-      if (button && !button.dataset.originalText) {
-        button.dataset.originalText = button.textContent;
-        button.textContent = 'Copiado';
-        window.setTimeout(() => {
-          button.textContent = button.dataset.originalText;
-          delete button.dataset.originalText;
-        }, 1500);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } else {
+        copied = legacyCopy(text);
       }
     } catch {
+      copied = legacyCopy(text);
+    }
+    if (!copied) {
       showToast('No se pudo copiar', 'error');
+      return;
+    }
+    showToast(`${label} copiado`, 'success');
+    if (button && !button.dataset.originalText) {
+      button.dataset.originalText = button.textContent;
+      button.textContent = 'Copiado';
+      window.setTimeout(() => {
+        button.textContent = button.dataset.originalText;
+        delete button.dataset.originalText;
+      }, 1500);
     }
   }
 
@@ -888,8 +1004,12 @@
       await fetchPing();
       await fetchStats();
       await loadBrands();
-      performSearch();
+      state.results = [];
+      state.selected = null;
+      state.page = 1;
+      state.forceAll = true;
       setView('search');
+      await performSearch();
     } catch (error) {
       showToast(error.message || 'No se pudo procesar el Excel', 'error');
     } finally {
@@ -912,7 +1032,12 @@
       showToast(`${Number(data.records || 0).toLocaleString('es-CL')} códigos cargados`, 'success');
       await fetchPing();
       await fetchCsvStatus();
-      performSearch();
+      state.results = [];
+      state.selected = null;
+      state.page = 1;
+      state.forceAll = true;
+      setView('search');
+      await performSearch();
     } catch (error) {
       showToast(error.message || 'No se pudo procesar el CSV', 'error');
     } finally {
@@ -983,7 +1108,7 @@
     bindFilters();
     bindResults();
     bindConfig();
-    applyUrlCarrier();
+    const urlCarrier = applyUrlCarrier();
     updateCarrierUI();
     updateOnlineStatus();
     renderWeek(null);
@@ -999,6 +1124,9 @@
     showState('initialState');
     if (!navigator.onLine) {
       if (!restoreLastSearch()) showState('offlineState');
+    } else if (urlCarrier) {
+      state.forceAll = true;
+      performSearch();
     }
     $('detailBack')?.addEventListener('click', closeDetail);
     $('btnPrintMobile')?.addEventListener('click', printCurrent);
@@ -1022,6 +1150,7 @@
     renderDetail,
     copyCode,
     showToast,
+    printCurrent,
   };
 
   if (document.readyState === 'loading') {

@@ -41,4 +41,14 @@ def test_config_refresca_todo_despues_de_subir():
     js = _js()
     assert "await fetchPing()" in js
     assert "await fetchStats()" in js
-    assert "performSearch()" in js
+    # La búsqueda se refresca después de volver a la vista de búsqueda,
+    # si no `performSearch` retorna sin hacer nada.
+    excel = js.index("async function uploadExcel")
+    csv = js.index("async function uploadCsv")
+    end = js.index("function renderConfig")
+    for start, stop in ((excel, csv), (csv, end)):
+        block = js[start:stop]
+        assert "setView('search')" in block
+        assert block.index("setView('search')") < block.index("await performSearch()")
+        assert "state.results = []" in block
+        assert "state.selected = null" in block

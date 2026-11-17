@@ -274,7 +274,7 @@
 
   <section id="detailDialog" class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detailTitle" hidden>
     <div class="detail-nav">
-      <button id="detailBack" class="back-button" type="button" aria-label="Cerrar">
+      <button id="detailBack" class="back-button" type="button" aria-label="Volver">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Volver</span>
       </button>
@@ -310,17 +310,17 @@
       <div id="printDiscount">-$80.000</div>
       <div><span>Normal: <s id="printNormalPrice">$499.990</s></span> <strong>Final: <span id="printFinalPrice">$419.990</span></strong></div>
     </div>
-    <div class="print-barcode-wrapper">
+    <div id="printEanBlock" class="print-barcode-wrapper">
       <div class="print-label">Código del equipo</div>
       <img id="printEanImg" src="" alt="Código de barras del equipo">
       <div id="printEanNumber">0200027537897</div>
     </div>
-    <div class="print-barcode-wrapper">
+    <div id="printPlanBlock" class="print-barcode-wrapper">
       <div class="print-label">Código del plan (<span id="printCarrierPlan">CLARO</span>)</div>
       <img id="printPlanImg" src="" alt="Código de barras del plan CLARO">
       <div id="printPlanNumber">200028174046</div>
     </div>
-    <div class="print-barcode-wrapper">
+    <div id="printPluBlock" class="print-barcode-wrapper">
       <div class="print-label">PLU interno</div>
       <img id="printPluBarcodeImg" src="" alt="Código de barras del PLU">
       <div id="printPluNumber">27537898</div>

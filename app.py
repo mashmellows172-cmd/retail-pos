@@ -88,7 +88,15 @@ def upload_excel():
         upload_dir = "/tmp" if os.path.exists("/tmp") else os.path.join(os.path.dirname(__file__), "uploads")
         os.makedirs(upload_dir, exist_ok=True)
         path = os.path.join(upload_dir, "current.xlsx")
-        f.save(path)
+        tmp_path = os.path.join(upload_dir, "current.upload.xlsx")
+        f.save(tmp_path)
+        loaded = dl.load_all(tmp_path)
+        total = sum(len(df) for df in loaded.values()) if loaded else 0
+        if total <= 0:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            return jsonify({"ok": False, "error": "El Excel no tiene filas válidas para CLARO, WOM o ENTEL"}), 400
+        os.replace(tmp_path, path)
         dl.set_excel_path(path)
         _state["excel_path"] = path
         _state["excel_name"] = f.filename
@@ -158,10 +166,22 @@ def upload_csv():
         if "file" not in request.files:
             return jsonify({"ok": False, "error": "No se recibió archivo"}), 400
         f = request.files["file"]
+        if not f.filename.lower().endswith(".csv"):
+            return jsonify({"ok": False, "error": "Solo se aceptan archivos CSV"}), 400
         upload_dir = "/tmp" if os.path.exists("/tmp") else os.path.join(os.path.dirname(__file__), "uploads")
         os.makedirs(upload_dir, exist_ok=True)
         path = os.path.join(upload_dir, "existencias.csv")
-        f.save(path)
+        tmp_path = os.path.join(upload_dir, "existencias.upload.csv")
+        previous = _state["csv_path"]
+        f.save(tmp_path)
+        count = bu.reload_csv(tmp_path)
+        if count <= 0:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            if previous and os.path.exists(previous):
+                bu.reload_csv(previous)
+            return jsonify({"ok": False, "error": "El CSV no contiene códigos de barra válidos"}), 400
+        os.replace(tmp_path, path)
         count = bu.reload_csv(path)
         _state["csv_path"] = path
         _state["csv_name"] = f.filename

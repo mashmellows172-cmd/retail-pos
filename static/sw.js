@@ -49,7 +49,7 @@ self.addEventListener('fetch', (e) => {
 
   // Navegación: red primero para entregar mejoras al instante.
   if (e.request.mode === 'navigate') {
-    e.respondWith(networkFirst(e.request, CACHE_NAME));
+    e.respondWith(networkFirst(e.request, CACHE_NAME, { ignoreSearch: true }));
     return;
   }
 
@@ -59,20 +59,27 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // Código y estilos propios: red primero para no quedar con una versión vieja
+  // cuando se despliega sin subir el nombre del caché.
+  if (['/static/app.css', '/static/app.js', '/manifest.json'].includes(url.pathname)) {
+    e.respondWith(networkFirst(e.request, CACHE_NAME));
+    return;
+  }
+
   // Assets estáticos: cache-first.
   e.respondWith(cacheFirst(e.request, CACHE_NAME));
 });
 
-async function networkFirst(request, cacheName) {
+async function networkFirst(request, cacheName, options = {}) {
   try {
     const response = await fetch(request);
     if (response.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone());
     }
     return response;
   } catch {
-    const cached = await caches.match(request);
+    const cached = await caches.match(request, options);
     if (cached) return cached;
     return new Response(JSON.stringify({ error: 'Sin conexión', offline: true }), {
       status: 503,
@@ -88,7 +95,7 @@ async function cacheFirst(request, cacheName) {
     const response = await fetch(request);
     if (response.ok) {
       const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone());
     }
     return response;
   } catch {

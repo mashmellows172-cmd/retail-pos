@@ -28,3 +28,26 @@ def test_app_js_conserva_la_ultima_busqueda():
     assert "localStorage.setItem" in js
     assert "localStorage.getItem" in js
     assert "Sin conexión — mostrando datos guardados" in js
+
+
+def test_busqueda_nueva_offline_no_muestra_la_anterior():
+    js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    start = js.index("async function performSearch")
+    end = js.index("function renderResults", start)
+    block = js[start:end]
+    assert "restoreLastSearchForCurrentQuery" in block
+    offline = block[block.index("if (!navigator.onLine)") :]
+    segment = offline[:600]
+    assert "state.results = []" in segment
+    assert "showState('offlineState')" in segment
+    # Solo se restaura si la consulta y la operadora coinciden.
+    assert "saved.query || ''" in js and "sameCarrier" in js
+
+
+def test_assets_propios_son_network_first():
+    """Un cambio de CSS/JS debe llegar aunque no se suba el nombre del caché."""
+    sw = SW.read_text(encoding="utf-8")
+    assert "['/static/app.css', '/static/app.js', '/manifest.json'].includes(url.pathname)" in sw
+    # Navegar a /?op=CLARO sin red debe servir el shell precacheado como '/'.
+    assert "caches.match(request, options)" in sw
+    assert "{ ignoreSearch: true }" in sw

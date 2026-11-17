@@ -30,7 +30,7 @@ def test_debounce_paginacion_y_layout_unico():
 
 def test_estado_inicial_no_consulta_el_catalogo():
     js = _js()
-    assert "if (!state.query && !state.brand && !state.minDcto && !state.maxPrice && !state.forceAll)" in js
+    assert "if (!state.query.trim() && !state.brand && !state.minDcto && !state.maxPrice && !state.forceAll)" in js
     assert "Escanea o busca un equipo" in _html()
     assert "Ver todo el catálogo" in _html()
 
