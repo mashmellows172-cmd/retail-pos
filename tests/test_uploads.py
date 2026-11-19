@@ -33,6 +33,24 @@ def test_excel_con_extension_incorrecta_se_rechaza(client):
     assert res.status_code == 400
 
 
+def test_export_excel_sirve_el_archivo_cargado(client, tmp_path, monkeypatch):
+    excel = tmp_path / "semana.xlsx"
+    excel.write_bytes(b"PK\x03\x04datos")
+    monkeypatch.setitem(app_module._state, "excel_path", str(excel))
+    monkeypatch.setitem(app_module._state, "excel_name", "MSM W45.xlsx")
+
+    res = client.get("/api/export-excel")
+
+    assert res.status_code == 200
+    assert res.data == b"PK\x03\x04datos"
+    assert "xlsx" in res.headers.get("Content-Disposition", "")
+
+
+def test_export_excel_sin_datos_responde_404(client, monkeypatch):
+    monkeypatch.setitem(app_module._state, "excel_path", None)
+    assert client.get("/api/export-excel").status_code == 404
+
+
 def test_csv_sin_codigos_se_rechaza_sin_pisar_el_bueno(client):
     before = app_module._state["csv_path"]
     res = client.post(
@@ -43,3 +61,4 @@ def test_csv_sin_codigos_se_rechaza_sin_pisar_el_bueno(client):
     assert res.status_code == 400
     assert res.get_json()["ok"] is False
     assert app_module._state["csv_path"] == before
+

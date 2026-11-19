@@ -182,6 +182,20 @@ def search():
             r["ean13_source"] = bc["source"]
     return jsonify(results)
 
+@app.route("/api/export-excel")
+def export_excel():
+    """Devuelve el Excel cargado para respaldarlo en el navegador."""
+    path = _state["excel_path"]
+    if not path or not os.path.exists(path):
+        return jsonify({"ok": False, "error": "Sin Excel cargado"}), 404
+    name = _state.get("excel_name") or "catalogo.xlsx"
+    return send_from_directory(
+        os.path.dirname(path), os.path.basename(path),
+        as_attachment=True, download_name=name,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
 # ──────────────────────────────────────────────
 # API: CSV de existencias
 # ──────────────────────────────────────────────

@@ -51,7 +51,7 @@
 
 - El árbol de trabajo local y remoto está **sincronizado en `main`**.
 - Los endpoints y la carga de archivos en Vercel están totalmente probados y respondiendo `200 OK`.
-- **Persistencia del Excel:** Vercel usa un filesystem efímero. La app guarda el Excel elegido en el navegador (`localStorage['retailpos:seedExcel:v1']`) y lo vuelve a subir automáticamente cuando una instancia nueva arranca sin datos. Para persistencia real entre dispositivos, conecta un **Blob store** en Vercel (Storage → Blob): al desplegar, Vercel inyecta `BLOB_READ_WRITE_TOKEN` y `storage.py` guarda/restaura los archivos. Configuración muestra el estado en “Persistencia” (`Blob (permanente)` o `Local (se reinicia)`).
+- **Persistencia del Excel:** Vercel usa un filesystem efímero. La app guarda el Excel elegido en el navegador (`localStorage['retailpos:seedExcel:v1']`) y lo vuelve a subir automáticamente cuando una instancia nueva arranca sin datos. Si el servidor tiene el Excel cargado, el navegador lo descarga solo desde `/api/export-excel` y lo deja respaldado sin que el vendedor tenga que volver a subirlo. Para persistencia real entre dispositivos, conecta un **Blob store** en Vercel (Storage → Blob): al desplegar, Vercel inyecta `BLOB_READ_WRITE_TOKEN` y `storage.py` guarda/restaura los archivos. Configuración muestra el estado en “Persistencia” (`Blob (permanente)` o `Local (se reinicia)`).
 - Tras conectar Blob hay que subir el Excel una vez desde Configuración para dejarlo respaldado. Sin Blob, basta con subirlo una vez por dispositivo.
 - Cualquier otro agente puede clonar directamente o continuar editando desde el repositorio `mashmellows172-cmd/retail-pos`.
 

@@ -216,6 +216,24 @@
     }
   }
 
+  async function maybeBackupSeed() {
+    if (!navigator.onLine || state.hasData !== true || loadExcelSeed()) return;
+    try {
+      const res = await fetch('/api/export-excel');
+      if (!res.ok) return;
+      const blob = await res.blob();
+      if (!blob.size) return;
+      const name = state.excelName || 'catalogo.xlsx';
+      const file = new File([blob], name, {
+        type: blob.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const dataUrl = await readFileAsDataUrl(file);
+      if (dataUrl) saveExcelSeed(file, dataUrl);
+    } catch {
+      /* respaldo best-effort: si falla, el servidor sigue sirviendo el Excel */
+    }
+  }
+
   function restoreLastSearch() {
     const saved = loadLastSearch();
     if (!saved || !saved.results.length) return false;
@@ -1193,7 +1211,11 @@
       const sheet = $('filterSheet');
       if (sheet) sheet.hidden = false;
     }
-    fetchPing().then(reseedExcelIfNeeded);
+    fetchPing().then(async () => {
+      if (state.hasData === false) await reseedExcelIfNeeded();
+      await maybeBackupSeed();
+      renderConfig();
+    });
     fetchStats();
     fetchCsvStatus();
     loadBrands();

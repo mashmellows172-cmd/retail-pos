@@ -58,7 +58,15 @@ def test_el_excel_se_guarda_en_el_navegador_y_se_restaura():
     js = _js()
     assert "retailpos:seedExcel:v1" in js
     assert "reseedExcelIfNeeded" in js
-    assert "fetchPing().then(reseedExcelIfNeeded)" in js
+    assert "fetchPing().then" in js
     assert "saveExcelSeed(file, dataUrl)" in js
     assert "data.persistencia" in js
     assert 'id="diagPersistencia"' in _html()
+
+
+def test_el_navegador_respalda_el_excel_del_servidor_sin_subirlo():
+    js = _js()
+    assert "maybeBackupSeed" in js
+    assert "/api/export-excel" in js
+    assert "loadExcelSeed()" in js
+
