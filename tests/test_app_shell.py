@@ -50,6 +50,13 @@ def test_el_css_define_el_sistema_ios():
     assert "ui-monospace" in css
 
 
+def test_entel_usa_azul_institucional():
+    css = (ROOT / "static" / "app.css").read_text(encoding="utf-8")
+    assert "--entel: #0B5BD3" in css
+    assert "#C2410C" not in css
+    assert "#FF6B00" not in css
+
+
 def test_app_js_arranca_con_el_estado_esperado():
     js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
     assert "const state = {" in js

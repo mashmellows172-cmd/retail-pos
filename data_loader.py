@@ -17,7 +17,7 @@ OPERADORAS = ["CLARO", "WOM", "ENTEL"]
 OPERADORA_COLORS = {
     "CLARO": "#E8003D",
     "WOM": "#6B2D8B",
-    "ENTEL": "#FF6B00",
+    "ENTEL": "#0B5BD3",
 }
 
 

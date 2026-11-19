@@ -13,6 +13,7 @@ from flask import Flask, jsonify, request, render_template, send_from_directory,
 
 import data_loader as dl
 import barcode_utils as bu
+import storage
 
 # ──────────────────────────────────────────────
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -40,6 +41,34 @@ def _basename(path):
 
 _state["excel_name"] = _basename(_state["excel_path"])
 _state["csv_name"] = _basename(_state["csv_path"])
+
+UPLOAD_DIR = "/tmp" if os.path.exists("/tmp") else os.path.join(os.path.dirname(__file__), "uploads")
+
+
+def _restore_persisted():
+    """Restaura los archivos guardados en Vercel Blob (instancia nueva)."""
+    if not storage.enabled():
+        return
+    try:
+        if not _state["excel_path"] or not os.path.exists(_state["excel_path"]):
+            destination = os.path.join(UPLOAD_DIR, "current.xlsx")
+            item = storage.restore("excel", destination)
+            if item:
+                _state["excel_path"] = destination
+                _state["excel_name"] = storage.name_from_pathname(item.get("pathname"), "current.xlsx")
+                dl.set_excel_path(destination)
+        if not _state["csv_path"] or not os.path.exists(_state["csv_path"]):
+            destination = os.path.join(UPLOAD_DIR, "existencias.csv")
+            item = storage.restore("csv", destination)
+            if item:
+                _state["csv_path"] = destination
+                _state["csv_name"] = storage.name_from_pathname(item.get("pathname"), "existencias.csv")
+                bu.reload_csv(destination)
+    except Exception as exc:  # pragma: no cover - depende de la red
+        print(f"[BLOB] Restauración omitida: {exc}")
+
+
+_restore_persisted()
 
 # Pre-cargar Excel al inicio
 if _state["excel_path"]:
@@ -85,7 +114,7 @@ def upload_excel():
         f = request.files["file"]
         if not f.filename.endswith((".xlsx", ".xls")):
             return jsonify({"ok": False, "error": "Solo se aceptan archivos Excel"}), 400
-        upload_dir = "/tmp" if os.path.exists("/tmp") else os.path.join(os.path.dirname(__file__), "uploads")
+        upload_dir = UPLOAD_DIR
         os.makedirs(upload_dir, exist_ok=True)
         path = os.path.join(upload_dir, "current.xlsx")
         tmp_path = os.path.join(upload_dir, "current.upload.xlsx")
@@ -100,6 +129,11 @@ def upload_excel():
         dl.set_excel_path(path)
         _state["excel_path"] = path
         _state["excel_name"] = f.filename
+        try:
+            with open(path, "rb") as handle:
+                storage.save("excel", f.filename, handle.read())
+        except Exception as exc:  # pragma: no cover - depende de la red
+            print(f"[BLOB] No se pudo respaldar el Excel: {exc}")
         return jsonify({"ok": True, "stats": dl.get_stats(path), "filename": f.filename, "excel_name": f.filename})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -168,7 +202,7 @@ def upload_csv():
         f = request.files["file"]
         if not f.filename.lower().endswith(".csv"):
             return jsonify({"ok": False, "error": "Solo se aceptan archivos CSV"}), 400
-        upload_dir = "/tmp" if os.path.exists("/tmp") else os.path.join(os.path.dirname(__file__), "uploads")
+        upload_dir = UPLOAD_DIR
         os.makedirs(upload_dir, exist_ok=True)
         path = os.path.join(upload_dir, "existencias.csv")
         tmp_path = os.path.join(upload_dir, "existencias.upload.csv")
@@ -185,6 +219,11 @@ def upload_csv():
         count = bu.reload_csv(path)
         _state["csv_path"] = path
         _state["csv_name"] = f.filename
+        try:
+            with open(path, "rb") as handle:
+                storage.save("csv", f.filename, handle.read())
+        except Exception as exc:  # pragma: no cover - depende de la red
+            print(f"[BLOB] No se pudo respaldar el CSV: {exc}")
         return jsonify({"ok": True, "records": count, "filename": f.filename, "csv_name": f.filename})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -244,7 +283,8 @@ def ping():
         "csv": _state["csv_path"],
         "excel_name": _state.get("excel_name"),
         "csv_name": _state.get("csv_name"),
-        "version": "2.0"
+        "persistencia": "blob" if storage.enabled() else "efimera",
+        "version": "2.1"
     })
 
 # ──────────────────────────────────────────────

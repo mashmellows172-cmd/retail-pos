@@ -26,6 +26,7 @@
     excelName: null,
     csvName: null,
     version: null,
+    persistencia: null,
     installPrompt: null,
     lastSearch: null,
   };
@@ -146,6 +147,72 @@
       return saved;
     } catch {
       return null;
+    }
+  }
+
+  const SEED_KEY = 'retailpos:seedExcel:v1';
+  let reseeding = false;
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function saveExcelSeed(file, dataUrl) {
+    try {
+      localStorage.setItem(SEED_KEY, JSON.stringify({ name: file.name, dataUrl, savedAt: Date.now() }));
+    } catch {
+      /* sin espacio: se sigue usando el servidor */
+    }
+  }
+
+  function loadExcelSeed() {
+    try {
+      const raw = localStorage.getItem(SEED_KEY);
+      if (!raw) return null;
+      const seed = JSON.parse(raw);
+      if (!seed || typeof seed.dataUrl !== 'string' || !seed.dataUrl.startsWith('data:')) return null;
+      return seed;
+    } catch {
+      return null;
+    }
+  }
+
+  function seedToFile(seed) {
+    const [header, base64] = seed.dataUrl.split(',');
+    const mime = (header.match(/data:([^;]+)/) || [])[1] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return new File([bytes], seed.name || 'catalogo.xlsx', { type: mime });
+  }
+
+  async function reseedExcelIfNeeded() {
+    if (reseeding || state.hasData !== false || !navigator.onLine) return;
+    const seed = loadExcelSeed();
+    if (!seed) return;
+    reseeding = true;
+    try {
+      const form = new FormData();
+      form.append('file', seedToFile(seed));
+      const res = await fetch('/api/upload-excel', { method: 'POST', body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) return;
+      state.hasData = true;
+      state.excelName = data.excel_name || seed.name;
+      await fetchStats();
+      await loadBrands();
+      if (!state.query.trim() && !state.brand && !state.minDcto && !state.maxPrice) state.forceAll = true;
+      await performSearch();
+      showToast('Catálogo restaurado', 'success');
+    } catch {
+      /* sin conexión o servidor reiniciando */
+    } finally {
+      reseeding = false;
     }
   }
 
@@ -349,6 +416,7 @@
       state.excelName = data.excel_name || null;
       state.csvName = data.csv_name || null;
       state.version = data.version || null;
+      state.persistencia = data.persistencia || null;
       if (!state.hasData) {
         if (!state.results.length) showState('noData');
         renderWeek(null);
@@ -1000,6 +1068,8 @@
       if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo procesar el Excel');
       state.excelName = data.excel_name || file.name;
       state.hasData = true;
+      const dataUrl = await readFileAsDataUrl(file);
+      if (dataUrl) saveExcelSeed(file, dataUrl);
       showToast('Excel actualizado', 'success');
       await fetchPing();
       await fetchStats();
@@ -1054,6 +1124,12 @@
     if (csv) csv.textContent = state.csvName || 'Sin archivo';
     const version = $('diagVersion');
     if (version && state.version) version.textContent = `v${state.version}`;
+    const persistencia = $('diagPersistencia');
+    if (persistencia) {
+      persistencia.textContent = state.persistencia === 'blob'
+        ? 'Blob (permanente)'
+        : (state.persistencia === 'efimera' ? 'Local (se reinicia)' : '—');
+    }
     const sw = $('diagSwStatus');
     if (sw) {
       if (!('serviceWorker' in navigator)) sw.textContent = 'No soportado';
@@ -1117,7 +1193,7 @@
       const sheet = $('filterSheet');
       if (sheet) sheet.hidden = false;
     }
-    fetchPing();
+    fetchPing().then(reseedExcelIfNeeded);
     fetchStats();
     fetchCsvStatus();
     loadBrands();
@@ -1151,6 +1227,7 @@
     copyCode,
     showToast,
     printCurrent,
+    reseedExcelIfNeeded,
   };
 
   if (document.readyState === 'loading') {

@@ -51,7 +51,8 @@
 
 - El árbol de trabajo local y remoto está **sincronizado en `main`**.
 - Los endpoints y la carga de archivos en Vercel están totalmente probados y respondiendo `200 OK`.
-- **Importante:** el filesystem de Vercel es efímero. Después de cada despliegue hay que volver a subir el Excel semanal y el CSV desde **Configuración**; hasta entonces la app muestra "No hay precios cargados".
+- **Persistencia del Excel:** Vercel usa un filesystem efímero. La app guarda el Excel elegido en el navegador (`localStorage['retailpos:seedExcel:v1']`) y lo vuelve a subir automáticamente cuando una instancia nueva arranca sin datos. Para persistencia real entre dispositivos, conecta un **Blob store** en Vercel (Storage → Blob): al desplegar, Vercel inyecta `BLOB_READ_WRITE_TOKEN` y `storage.py` guarda/restaura los archivos. Configuración muestra el estado en “Persistencia” (`Blob (permanente)` o `Local (se reinicia)`).
+- Tras conectar Blob hay que subir el Excel una vez desde Configuración para dejarlo respaldado. Sin Blob, basta con subirlo una vez por dispositivo.
 - Cualquier otro agente puede clonar directamente o continuar editando desde el repositorio `mashmellows172-cmd/retail-pos`.
 
 ---
@@ -64,7 +65,7 @@
 
 **Regresión cubierta:** `tests/test_plan_barcode.py` valida el mapeo D/E en las tres hojas y que la UI no vuelva a usar `prod.plan` como código de barras. Ejecutar con `python -m pytest -q`.
 
-**PWA:** el caché actual es **`retailpos-v3`** (barcodes en `retailpos-barcodes-v3`). Las navegaciones y la API usan network-first; los assets, cache-first. Si se cambian `app.css`/`app.js`, hay que subir el nombre del caché para que los equipos con la PWA instalada reciban la versión nueva.
+**PWA:** el caché actual es **`retailpos-v3`** (barcodes en `retailpos-barcodes-v3`). Las navegaciones, la API, `app.css`, `app.js` y el manifest usan network-first; el resto de los assets, cache-first. Así un cambio de código se ve aunque no se suba el nombre del caché.
 
 ---
 

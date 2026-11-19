@@ -132,7 +132,7 @@ def load_csv_barcodes(csv_path: str) -> dict:
     result = {}
     # Regex para líneas de datos: | num | texto | PLU | BARCODE | ...
     data_re = re.compile(
-        r'^\s*\|\s*(\d+)\s*\|[^|]*\|[^|]*\|\s*(\d{6,9})\s*\|'
+        r'^\s*\|\s*\d+\s*\|[^|]*\|\s*(\d{6,9})\s*\|'
         r'\s*(0*\d{10,15})\s*\|'
     )
 
@@ -141,15 +141,15 @@ def load_csv_barcodes(csv_path: str) -> dict:
             for line in f:
                 m = data_re.match(line)
                 if m:
-                    plu = m.group(2).strip().lstrip("0") or "0"
-                    barcode_raw = m.group(3).strip()
+                    plu = m.group(1).strip().lstrip("0") or "0"
+                    barcode_raw = m.group(2).strip()
                     # El CSV guarda el barcode con ceros al frente (14 chars)
                     # El EAN-13 real son los últimos 13 (o sin el primer cero)
                     barcode = barcode_raw.lstrip("0") or barcode_raw
                     if len(barcode) < 13:
                         barcode = barcode.zfill(13)
-                    elif len(barcode) == 14:
-                        barcode = barcode[1:]  # quitar primer cero extra
+                    elif len(barcode) > 13:
+                        barcode = barcode[-13:]  # conservar los últimos 13 dígitos
 
                     if plu and barcode and is_valid_ean13(barcode):
                         result[plu] = barcode

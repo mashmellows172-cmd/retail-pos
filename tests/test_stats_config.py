@@ -52,3 +52,13 @@ def test_config_refresca_todo_despues_de_subir():
         assert block.index("setView('search')") < block.index("await performSearch()")
         assert "state.results = []" in block
         assert "state.selected = null" in block
+
+
+def test_el_excel_se_guarda_en_el_navegador_y_se_restaura():
+    js = _js()
+    assert "retailpos:seedExcel:v1" in js
+    assert "reseedExcelIfNeeded" in js
+    assert "fetchPing().then(reseedExcelIfNeeded)" in js
+    assert "saveExcelSeed(file, dataUrl)" in js
+    assert "data.persistencia" in js
+    assert 'id="diagPersistencia"' in _html()
