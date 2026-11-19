@@ -23,6 +23,10 @@ def token():
     return os.environ.get("BLOB_READ_WRITE_TOKEN", "").strip()
 
 
+def access():
+    return os.environ.get("BLOB_ACCESS", "private").strip() or "private"
+
+
 def enabled():
     return bool(token())
 
@@ -54,6 +58,8 @@ def save(kind, filename, content):
         method="PUT",
         data=content,
         headers={
+            "x-api-version": "13",
+            "x-vercel-blob-access": access(),
             "x-content-type": "application/octet-stream",
             "x-add-random-suffix": "0",
             "x-cache-control-max-age": "0",

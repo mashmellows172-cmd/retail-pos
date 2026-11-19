@@ -28,6 +28,7 @@ def test_save_usa_hash_y_nombre_original(monkeypatch):
     assert "MSM_W45" in pathname
     assert calls[0]["method"] == "PUT"
     assert calls[0]["data"] == b"contenido"
+    assert calls[0]["headers"]["x-vercel-blob-access"] == "private"
 
 
 def test_latest_elige_el_mas_reciente(monkeypatch):
